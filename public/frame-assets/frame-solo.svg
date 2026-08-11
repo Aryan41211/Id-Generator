@@ -1,0 +1,32 @@
+<svg viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="noiseFilter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#0b3d24"/>
+  <rect width="100%" height="100%" filter="url(#noiseFilter)" opacity="0.04"/>
+  
+  <!-- Photo cutout area -->
+  <rect x="90" y="120" width="900" height="675" rx="20" fill="#14532d" stroke="#d8cfa8" stroke-width="4"/>
+  
+  <!-- Name area -->
+  <text x="540" y="870" text-anchor="middle" font-family="Anton, sans-serif" font-size="72" fill="#f6efd8">YOUR NAME</text>
+  
+  <!-- Stack area -->
+  <text x="540" y="920" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="36" fill="#f6d33c">YOUR STACK</text>
+  
+  <!-- Builder class pill -->
+  <rect x="340" y="960" width="400" height="60" rx="30" fill="#f6d33c"/>
+  <text x="540" y="1000" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="24" fill="#123524">COMMON · TERMINAL SHAMAN</text>
+  
+  <!-- Decorative motifs -->
+  <circle cx="100" cy="1200" r="40" fill="#f6d33c"/>
+  <path d="M980 1150 L980 1250 M980 1200 C950 1170 920 1190 900 1160 M980 1200 C1010 1170 1040 1190 1060 1160" 
+        stroke="#ec1263" stroke-width="4" fill="none"/>
+  
+  <!-- HH GOA 2026 wordmark -->
+  <text x="540" y="1280" text-anchor="middle" font-family="Anton, sans-serif" font-size="48" fill="#f6efd8">HH GOA 2026</text>
+</svg>

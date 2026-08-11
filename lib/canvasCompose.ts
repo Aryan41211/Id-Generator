@@ -304,10 +304,8 @@ function drawPalmSilhouette(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.scale(scale, scale)
   ctx.fillStyle = color
 
-  // Trunk
   ctx.fillRect(-2, 0, 4, 40)
 
-  // Fronds (simple triangular shapes)
   ctx.beginPath()
   ctx.moveTo(0, -5)
   ctx.lineTo(-18, 15)
@@ -335,6 +333,231 @@ function drawPalmSilhouette(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.lineTo(3, 2)
   ctx.closePath()
   ctx.fill()
+
+  ctx.restore()
+}
+
+function drawBrushStroke(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string) {
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x + 6, y)
+  ctx.lineTo(x + w - 4, y + 2)
+  ctx.lineTo(x + w, y + 6)
+  ctx.lineTo(x + w - 2, y + h - 4)
+  ctx.lineTo(x + w - 6, y + h)
+  ctx.lineTo(x + 4, y + h - 2)
+  ctx.lineTo(x, y + h - 6)
+  ctx.lineTo(x + 2, y + 4)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+}
+
+function drawTornPhotoFrame(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rotation: number
+) {
+  ctx.save()
+
+  const cx = x + w / 2
+  const cy = y + h / 2
+  ctx.translate(cx, cy)
+  ctx.rotate((rotation * Math.PI) / 180)
+  ctx.translate(-cx, -cy)
+
+  // Ragged/cream border
+  ctx.shadowColor = 'rgba(0,0,0,0.3)'
+  ctx.shadowBlur = 10
+  ctx.shadowOffsetX = 3
+  ctx.shadowOffsetY = 4
+
+  ctx.fillStyle = COLORS.cream
+  ctx.beginPath()
+  const bx = x - 10, by = y - 10, bw = w + 20, bh = h + 20
+  ctx.moveTo(bx + 4, by)
+  for (let px = bx; px < bx + bw; px += 8) {
+    ctx.lineTo(px, by + (Math.random() * 4 - 2))
+  }
+  for (let py = by; py < by + bh; py += 8) {
+    ctx.lineTo(bx + bw + (Math.random() * 4 - 2), py)
+  }
+  for (let px = bx + bw; px > bx; px -= 8) {
+    ctx.lineTo(px, by + bh + (Math.random() * 4 - 2))
+  }
+  for (let py = by + bh; py > by; py -= 8) {
+    ctx.lineTo(bx + (Math.random() * 4 - 2), py)
+  }
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
+
+  // Draw photo
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  coverFitCrop(ctx, img, x, y, w, h)
+  ctx.restore()
+
+  ctx.restore()
+}
+
+function drawTape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, angle: number, color: string) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate((angle * Math.PI) / 180)
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.85
+  ctx.fillRect(-w / 2, -6, w, 12)
+  ctx.restore()
+}
+
+function drawPushpin(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save()
+
+  // Pin head (pink circle)
+  ctx.beginPath()
+  ctx.arc(x, y - 8, 8, 0, Math.PI * 2)
+  ctx.fillStyle = COLORS.pink
+  ctx.fill()
+
+  // Shine
+  ctx.beginPath()
+  ctx.arc(x - 2, y - 10, 3, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'
+  ctx.fill()
+
+  // Pin point
+  ctx.beginPath()
+  ctx.moveTo(x - 1, y - 2)
+  ctx.lineTo(x + 1, y - 2)
+  ctx.lineTo(x, y + 4)
+  ctx.closePath()
+  ctx.fillStyle = '#888'
+  ctx.fill()
+
+  ctx.restore()
+}
+
+function drawSunsetCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
+  ctx.save()
+
+  // Clip circle
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.clip()
+
+  // Sky gradient
+  const grad = ctx.createLinearGradient(cx, cy - radius, cx, cy + radius)
+  grad.addColorStop(0, '#f6d33c')
+  grad.addColorStop(0.5, '#ec1263')
+  grad.addColorStop(1, '#0b3d24')
+  ctx.fillStyle = grad
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2)
+
+  // Sun
+  ctx.fillStyle = '#f6d33c'
+  ctx.beginPath()
+  ctx.arc(cx, cy + 10, radius * 0.3, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Water reflection
+  ctx.fillStyle = 'rgba(11, 61, 36, 0.4)'
+  ctx.fillRect(cx - radius, cy + radius * 0.3, radius * 2, radius * 0.7)
+
+  // Palm silhouettes
+  ctx.fillStyle = '#0b3d24'
+  // Left palm
+  ctx.fillRect(cx - radius * 0.5, cy - radius * 0.1, 3, radius * 0.4)
+  ctx.beginPath()
+  ctx.moveTo(cx - radius * 0.5, cy - radius * 0.1)
+  ctx.lineTo(cx - radius * 0.7, cy + radius * 0.1)
+  ctx.lineTo(cx - radius * 0.45, cy)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(cx - radius * 0.5, cy - radius * 0.1)
+  ctx.lineTo(cx - radius * 0.3, cy + radius * 0.05)
+  ctx.lineTo(cx - radius * 0.48, cy)
+  ctx.closePath()
+  ctx.fill()
+
+  // Right palm
+  ctx.fillRect(cx + radius * 0.3, cy - radius * 0.15, 3, radius * 0.45)
+  ctx.beginPath()
+  ctx.moveTo(cx + radius * 0.3, cy - radius * 0.15)
+  ctx.lineTo(cx + radius * 0.55, cy + radius * 0.05)
+  ctx.lineTo(cx + radius * 0.28, cy)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(cx + radius * 0.3, cy - radius * 0.15)
+  ctx.lineTo(cx + radius * 0.1, cy + radius * 0.05)
+  ctx.lineTo(cx + radius * 0.32, cy)
+  ctx.closePath()
+  ctx.fill()
+
+  // Border ring
+  ctx.strokeStyle = COLORS.yellow
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.restore()
+}
+
+function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.7
+
+  // 4-point star
+  ctx.beginPath()
+  ctx.moveTo(x, y - size)
+  ctx.lineTo(x + size * 0.3, y - size * 0.3)
+  ctx.lineTo(x + size, y)
+  ctx.lineTo(x + size * 0.3, y + size * 0.3)
+  ctx.lineTo(x, y + size)
+  ctx.lineTo(x - size * 0.3, y + size * 0.3)
+  ctx.lineTo(x - size, y)
+  ctx.lineTo(x - size * 0.3, y - size * 0.3)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.restore()
+}
+
+function drawBirds(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1.5
+  ctx.lineCap = 'round'
+  ctx.globalAlpha = 0.5
+
+  // Bird 1
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.quadraticCurveTo(x + 5, y - 5, x + 10, y)
+  ctx.quadraticCurveTo(x + 15, y - 5, x + 20, y)
+  ctx.stroke()
+
+  // Bird 2
+  ctx.beginPath()
+  ctx.moveTo(x + 25, y - 5)
+  ctx.quadraticCurveTo(x + 30, y - 10, x + 35, y - 5)
+  ctx.quadraticCurveTo(x + 40, y - 10, x + 45, y - 5)
+  ctx.stroke()
 
   ctx.restore()
 }
@@ -737,9 +960,9 @@ export async function composeSquadId(
   console.timeEnd('composeSquadId-background')
 
   console.time('composeSquadId-top')
-  // === TOP: "HH" + "GOA" ===
+  // === TOP LEFT: "HH" ===
   ctx.save()
-  ctx.font = `bold 100px "Anton", sans-serif`
+  ctx.font = `bold 110px "Anton", sans-serif`
   ctx.fillStyle = COLORS.yellow
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
@@ -751,175 +974,243 @@ export async function composeSquadId(
   ctx.fillStyle = COLORS.cream
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  ctx.fillText('GOA', 40, 115)
+  ctx.fillText('GOA', 40, 125)
   ctx.restore()
 
+  // "BUILD THIS. SHIP THIS. CHANGE SOMETHING."
   ctx.save()
-  ctx.font = `bold 90px "Anton", sans-serif`
+  ctx.font = `bold 13px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('BUILD THIS.', 230, 35)
+  ctx.fillText('SHIP THIS.', 230, 52)
+  ctx.fillText('CHANGE SOMETHING.', 230, 69)
+  ctx.restore()
+
+  // Crosshair
+  drawCrosshairIcon(ctx, 430, 60, 22, COLORS.cream)
+
+  // "THE BUILDERS Are Here." on brush stroke
+  drawBrushStroke(ctx, 200, 110, 600, 80, COLORS.cream)
+  ctx.save()
+  ctx.font = `bold 48px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('THE BUILDERS', 500, 138)
+  ctx.restore()
+  ctx.save()
+  ctx.font = `italic bold 42px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.pink
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Are Here.', 500, 175)
+  ctx.restore()
+
+  // "2026" top right
+  ctx.save()
+  ctx.font = `bold 100px "Anton", sans-serif`
   ctx.fillStyle = COLORS.pink
   ctx.textAlign = 'right'
   ctx.textBaseline = 'top'
-  ctx.fillText('2026', W - 40, 20)
+  ctx.fillText('2026', W - 40, 15)
   ctx.restore()
 
   // "GOA, INDIA" tag
   ctx.save()
   ctx.fillStyle = COLORS.yellow
-  ctx.fillRect(W - 200, 115, 160, 28)
+  ctx.fillRect(W - 210, 120, 170, 28)
   ctx.font = `bold 14px "JetBrains Mono", monospace`
   ctx.fillStyle = COLORS.greenDeep
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('GOA, INDIA', W - 120, 129)
+  ctx.fillText('GOA, INDIA', W - 125, 134)
   ctx.restore()
 
-  // "BUILDER ID" vertical
-  ctx.save()
-  ctx.font = `bold 13px "JetBrains Mono", monospace`
-  ctx.fillStyle = COLORS.yellow
-  ctx.textAlign = 'center'
-  for (let i = 0; i < 'SQUAD'.length; i++) {
-    ctx.fillText('SQUAD'[i], W - 45, 170 + i * 16)
-  }
-  ctx.restore()
+  // Palm stamp top right
+  drawPalmBadge(ctx, W - 100, 220, 50)
 
-  // Crosshair
-  drawCrosshairIcon(ctx, 350, 60, 20, COLORS.cream)
+  // Sparkles and decorations
+  drawSparkle(ctx, 180, 30, 8, COLORS.yellow)
+  drawSparkle(ctx, 190, 100, 5, COLORS.cream)
+  drawBirds(ctx, 550, 30, COLORS.cream)
+  drawDecorativeDots(ctx, W - 130, 290, 4, 3, COLORS.yellow)
+
+  // Palm tree left side
+  drawPalmSilhouette(ctx, 50, 350, 1.5, COLORS.cream)
   console.timeEnd('composeSquadId-top')
 
   console.time('composeSquadId-photos')
-  // === PHOTO AREA: 4 photos in a row ===
-  const numPeople = input.people.length
-  const photoW = 240
-  const photoH = 320
-  const photoGap = 30
+  // === PHOTOS: 3 Polaroid-style with torn frames ===
+  const numPeople = Math.min(input.people.length, 3)
+  const photoW = 300
+  const photoH = 280
+  const photoGap = 50
   const totalPhotosW = numPeople * photoW + (numPeople - 1) * photoGap
   const photosStartX = (W - totalPhotosW) / 2
-  const photosY = 170
-  const photoRadius = 14
+  const photosY = 240
+  const rotations = [-3, 0, 2.5]
+  const tapeColors = [COLORS.yellow, COLORS.yellow, COLORS.pink]
 
   for (let i = 0; i < numPeople; i++) {
     const person = input.people[i]
     const px = photosStartX + i * (photoW + photoGap)
+    const py = photosY + (i === 1 ? 15 : 0)
+    const rotation = rotations[i]
 
     const photoImg = new Image()
     const photoUrl = URL.createObjectURL(resizedPhotos[i])
     photoImg.src = photoUrl
     await new Promise((resolve) => { photoImg.onload = resolve })
 
-    drawPhotoArea(ctx, photoImg, px, photosY, photoW, photoH, photoRadius)
+    drawTornPhotoFrame(ctx, photoImg, px, py, photoW, photoH, rotation)
     URL.revokeObjectURL(photoUrl)
 
-    // Small stamp below each
-    drawBuilderStamp(ctx, px + photoW / 2, photosY + photoH + 40, 30)
+    // Tape on top-left corner
+    drawTape(ctx, px + 30, py - 5, 50, -25, tapeColors[i])
 
-    // Builder class label below
+    // Pushpin on top center (for middle photo)
+    if (i === 1) {
+      drawPushpin(ctx, px + photoW / 2, py - 8)
+    }
+
+    // Number circle below photo
+    const numCx = px + photoW / 2
+    const numCy = py + photoH + 30
     ctx.save()
-    ctx.font = `bold 11px "JetBrains Mono", monospace`
+    ctx.beginPath()
+    ctx.arc(numCx, numCy, 16, 0, Math.PI * 2)
     ctx.fillStyle = COLORS.ink
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.fillText(person.builderClass.title.toUpperCase(), px + photoW / 2, photosY + photoH + 80)
-    ctx.restore()
-  }
-
-  // Decorative dots
-  drawDecorativeDots(ctx, 50, photosY + photoH + 120, 5, 3, COLORS.yellow)
-  drawDecorativeDots(ctx, W - 90, photosY + photoH + 120, 5, 3, COLORS.yellow)
-  console.timeEnd('composeSquadId-photos')
-
-  console.time('composeSquadId-bottom')
-  // === BOTTOM CREAM SECTION ===
-  const bottomY = 620
-
-  ctx.save()
-  ctx.fillStyle = COLORS.cream
-  ctx.beginPath()
-  ctx.moveTo(0, bottomY)
-  for (let x = 0; x <= W; x += 12) {
-    ctx.lineTo(x, bottomY + (Math.random() * 6 - 3))
-  }
-  ctx.lineTo(W, H)
-  ctx.lineTo(0, H)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-
-  // Names in a row
-  const namesY = bottomY + 30
-  const nameSpacing = W / numPeople
-  for (let i = 0; i < numPeople; i++) {
-    const person = input.people[i]
-    const nx = nameSpacing * i + nameSpacing / 2
-
-    // "BUILDER" label
-    ctx.save()
-    ctx.fillStyle = COLORS.pink
-    ctx.fillRect(nx - 50, namesY, 100, 22)
-    ctx.font = `bold 11px "JetBrains Mono", monospace`
+    ctx.fill()
+    ctx.font = `bold 14px "JetBrains Mono", monospace`
     ctx.fillStyle = COLORS.cream
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('BUILDER', nx, namesY + 11)
+    ctx.fillText(`0${i + 1}`, numCx, numCy)
     ctx.restore()
 
-    drawHashMarks(ctx, nx + 55, namesY + 5, 6, COLORS.pink)
+    // "BUILDER" label
+    const labelY = numCy + 26
+    ctx.save()
+    ctx.fillStyle = COLORS.pink
+    ctx.fillRect(numCx - 40, labelY, 80, 20)
+    ctx.font = `bold 10px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.cream
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('BUILDER', numCx, labelY + 10)
+    ctx.restore()
+
+    drawHashMarks(ctx, numCx + 44, labelY + 4, 5, COLORS.pink)
 
     // Name
     ctx.save()
-    ctx.font = `bold 36px "Anton", sans-serif`
-    ctx.fillStyle = COLORS.ink
+    ctx.font = `bold 22px "Anton", sans-serif`
+    ctx.fillStyle = COLORS.cream
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     let name = person.name.toUpperCase()
-    const maxW = nameSpacing - 40
-    while (ctx.measureText(name).width > maxW && name.length > 3) {
+    const maxNameW = photoW + 20
+    while (ctx.measureText(name).width > maxNameW && name.length > 3) {
       name = name.slice(0, -1)
     }
     if (name !== person.name.toUpperCase()) name += '…'
-    ctx.fillText(name, nx, namesY + 30)
+    ctx.fillText(name, numCx, labelY + 26)
     ctx.restore()
 
-    // Stack
+    // "STACK" yellow tag
+    const stackTagY = labelY + 54
     ctx.save()
-    ctx.font = `500 14px "JetBrains Mono", monospace`
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = COLORS.yellow
+    ctx.fillRect(numCx - 25, stackTagY, 50, 16)
+    ctx.font = `bold 8px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.greenDeep
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('STACK', numCx, stackTagY + 8)
+    ctx.restore()
+
+    // Stack text
+    ctx.save()
+    ctx.font = `500 12px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.cream
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    ctx.fillText((person.stack || '—').toUpperCase(), nx, namesY + 72)
+    ctx.fillText((person.stack || '—').toUpperCase(), numCx, stackTagY + 22)
     ctx.restore()
   }
 
-  // "THE BUILDERS ARE HERE."
+  // Extra decorative dots right side
+  drawDecorativeDots(ctx, W - 80, 400, 4, 4, COLORS.pink)
+  drawSparkle(ctx, W - 60, 500, 6, COLORS.yellow)
+  console.timeEnd('composeSquadId-photos')
+
+  console.time('composeSquadId-bottom')
+  // === BOTTOM SECTION: 3 boxes ===
+  const bottomY = 640
+
+  // "TEAM CLASS" brush stroke box (left)
+  drawBrushStroke(ctx, 40, bottomY, 340, 90, COLORS.cream)
   ctx.save()
-  ctx.font = `500 14px "JetBrains Mono", monospace`
-  ctx.fillStyle = COLORS.ink
-  ctx.textAlign = 'center'
+  ctx.font = `bold 12px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.pink
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  ctx.fillText('THE BUILDERS ARE HERE.', W / 2, bottomY + 140)
+  ctx.fillText('✦ TEAM CLASS ✦', 70, bottomY + 12)
+  ctx.restore()
+  ctx.save()
+  ctx.font = `bold 36px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  const classTitle = input.people[0]?.builderClass.title.toUpperCase() || 'BUILDER CLASS'
+  ctx.fillText(classTitle.length > 18 ? classTitle.slice(0, 18) : classTitle, 70, bottomY + 35)
   ctx.restore()
 
-  // "#FRAMEINGOA" tag
+  // Sunset circle (center)
+  drawSunsetCircle(ctx, W / 2, bottomY + 45, 55)
+
+  // "TEAM TAGLINE" brush stroke box (right)
+  drawBrushStroke(ctx, W - 380, bottomY, 340, 90, COLORS.cream)
+  ctx.save()
+  ctx.font = `bold 12px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.pink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('✦ TEAM TAGLINE ✦', W - 350, bottomY + 12)
+  ctx.restore()
+  ctx.save()
+  ctx.font = `bold 28px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('TEAM TAGLINE', W - 350, bottomY + 38)
+  ctx.fillText('GOES HERE', W - 350, bottomY + 62)
+  ctx.restore()
+
+  // Decorative sparkles
+  drawSparkle(ctx, 30, bottomY + 100, 6, COLORS.pink)
+  drawSparkle(ctx, W - 30, bottomY + 100, 6, COLORS.yellow)
+  drawCornerCross(ctx, 400, bottomY + 95, 6, COLORS.yellow)
+
+  // "#FRAMEINGOA" pink tag bottom right
   ctx.save()
   ctx.fillStyle = COLORS.pink
-  ctx.fillRect(40, H - 50, 180, 32)
+  const tagW = 180
+  ctx.fillRect(W - tagW - 40, H - 45, tagW, 30)
   ctx.font = `bold 14px "JetBrains Mono", monospace`
   ctx.fillStyle = COLORS.cream
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.fillText('#FRAMEINGOA', 50, H - 34)
+  ctx.fillText('#FRAMEINGOA', W - tagW - 30, H - 30)
   ctx.restore()
 
-  // "HH GOA 2026"
-  ctx.save()
-  ctx.font = `bold 14px "JetBrains Mono", monospace`
-  ctx.fillStyle = COLORS.ink
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('HH GOA 2026', W - 40, H - 34)
-  ctx.restore()
+  // Bottom decorative elements
+  drawCornerCross(ctx, 60, H - 40, 6, COLORS.yellow)
+  drawCornerCross(ctx, 200, H - 40, 6, COLORS.pink)
+  drawDecorativeDots(ctx, 300, H - 45, 3, 2, COLORS.yellow)
 
-  drawPalmSilhouette(ctx, W - 45, H - 60, 0.5, COLORS.pink)
   console.timeEnd('composeSquadId-bottom')
 
   console.time('composeSquadId-blob')

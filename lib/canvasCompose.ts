@@ -26,26 +26,6 @@ const COLORS = {
   ink: '#123524',
 }
 
-function getTierColor(tier: string): string {
-  switch (tier) {
-    case 'Common': return '#a8a064'
-    case 'Rare': return '#f6d33c'
-    case 'Elite': return '#ec1263'
-    case 'Legendary': return '#ff6b35'
-    default: return '#f6d33c'
-  }
-}
-
-function getTierTextColor(tier: string): string {
-  switch (tier) {
-    case 'Common': return '#123524'
-    case 'Rare': return '#123524'
-    case 'Elite': return '#f6efd8'
-    case 'Legendary': return '#f6efd8'
-    default: return '#123524'
-  }
-}
-
 const MAX_WORKING_DIMENSION = 1600
 
 async function resizeImage(blob: Blob): Promise<Blob> {
@@ -86,282 +66,307 @@ function coverFitCrop(
 ) {
   const imgRatio = img.width / img.height
   const boxRatio = w / h
-
-  let drawWidth: number
-  let drawHeight: number
-  let drawX: number
-  let drawY: number
-
   if (imgRatio > boxRatio) {
-    drawHeight = h
-    drawWidth = h * imgRatio
-    drawX = x - (drawWidth - w) / 2
-    drawY = y
+    const drawW = h * imgRatio
+    ctx.drawImage(img, x - (drawW - w) / 2, y, drawW, h)
   } else {
-    drawWidth = w
-    drawHeight = w / imgRatio
-    drawX = x
-    drawY = y - (drawHeight - h) / 2
+    const drawH = w / imgRatio
+    ctx.drawImage(img, x, y - (drawH - h) / 2, w, drawH)
   }
-
-  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
-}
-
-function drawDuotoneOverlay(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  ctx.save()
-  ctx.globalCompositeOperation = 'overlay'
-  ctx.fillStyle = COLORS.greenDeep
-  ctx.globalAlpha = 0.35
-  ctx.fillRect(x, y, w, h)
-  ctx.globalAlpha = 0.15
-  ctx.fillStyle = COLORS.cream
-  ctx.fillRect(x, y, w, h)
-  ctx.restore()
 }
 
 function drawGrainTexture(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.save()
-  ctx.globalAlpha = 0.04
-  for (let i = 0; i < 8000; i++) {
-    const x = Math.random() * w
-    const y = Math.random() * h
-    const size = Math.random() * 2
+  ctx.globalAlpha = 0.03
+  for (let i = 0; i < 6000; i++) {
     ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000'
-    ctx.fillRect(x, y, size, size)
+    ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2, Math.random() * 2)
   }
   ctx.restore()
 }
 
-function drawScallopedCircle(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  radius: number,
-  scallops: number,
-  depth: number
-) {
-  ctx.beginPath()
-  const angleStep = (Math.PI * 2) / scallops
-  for (let i = 0; i < scallops; i++) {
-    const angle1 = i * angleStep
-    const angle2 = (i + 0.5) * angleStep
-    const angle3 = (i + 1) * angleStep
-
-    const outerR = radius
-    const innerR = radius - depth
-
-    const x1 = cx + Math.cos(angle1) * outerR
-    const y1 = cy + Math.sin(angle1) * outerR
-    const cpx = cx + Math.cos(angle2) * innerR
-    const cpy = cy + Math.sin(angle2) * innerR
-    const x2 = cx + Math.cos(angle3) * outerR
-    const y2 = cy + Math.sin(angle3) * outerR
-
-    if (i === 0) ctx.moveTo(x1, y1)
-    ctx.quadraticCurveTo(cpx, cpy, x2, y2)
-  }
-  ctx.closePath()
-}
-
-function drawStamp(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  tier: string,
-  title: string,
-  radius: number
-) {
-  const color = getTierColor(tier)
-  const textColor = getTierTextColor(tier)
-
-  // Outer scalloped circle
+function drawHashMarks(ctx: CanvasRenderingContext2D, x: number, y: number, count: number, color: string) {
   ctx.save()
-  ctx.shadowColor = 'rgba(0,0,0,0.4)'
-  ctx.shadowBlur = 12
-  ctx.shadowOffsetX = 3
-  ctx.shadowOffsetY = 3
-  drawScallopedCircle(ctx, cx, cy, radius, 24, 8)
-  ctx.fillStyle = color
-  ctx.fill()
-  ctx.restore()
-
-  // Inner border ring
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius - 12, 0, Math.PI * 2)
-  ctx.strokeStyle = textColor
-  ctx.lineWidth = 2
-  ctx.globalAlpha = 0.6
-  ctx.stroke()
-  ctx.globalAlpha = 1
-
-  // Tier text (curved along top would be complex, just center it)
-  ctx.font = `bold ${Math.round(radius * 0.2)}px "JetBrains Mono", monospace`
-  ctx.fillStyle = textColor
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(tier.toUpperCase(), cx, cy - radius * 0.22)
-
-  // Title text
-  ctx.font = `bold ${Math.round(radius * 0.16)}px "JetBrains Mono", monospace`
-  ctx.fillStyle = textColor
-  const words = title.split(' ')
-  if (words.length <= 2) {
-    ctx.fillText(title.toUpperCase(), cx, cy + radius * 0.12)
-  } else {
-    ctx.fillText(words[0].toUpperCase(), cx, cy + radius * 0.05)
-    ctx.fillText(words.slice(1).join(' ').toUpperCase(), cx, cy + radius * 0.28)
-  }
-
-  ctx.restore()
-}
-
-function drawTornEdge(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  length: number,
-  direction: 'vertical' | 'horizontal',
-  tearSize: number = 8
-) {
-  ctx.save()
-  ctx.strokeStyle = COLORS.creamLine
-  ctx.lineWidth = 1
-  ctx.globalAlpha = 0.5
-  ctx.setLineDash([tearSize, tearSize])
-
-  ctx.beginPath()
-  if (direction === 'vertical') {
-    ctx.moveTo(x, y)
-    ctx.lineTo(x, y + length)
-  } else {
-    ctx.moveTo(x, y)
-    ctx.lineTo(x + length, y)
-  }
-  ctx.stroke()
-  ctx.setLineDash([])
-  ctx.restore()
-}
-
-function drawDiagonalBlock(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.save()
-  ctx.fillStyle = COLORS.pink
-  ctx.beginPath()
-  ctx.moveTo(0, h * 0.58)
-  ctx.lineTo(w, h * 0.42)
-  ctx.lineTo(w, h * 0.72)
-  ctx.lineTo(0, h * 0.88)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-}
-
-function drawPalmMotif(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, color: string) {
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.scale(scale, scale)
   ctx.strokeStyle = color
-  ctx.lineWidth = 3
+  ctx.lineWidth = 2
+  for (let i = 0; i < count; i++) {
+    ctx.beginPath()
+    ctx.moveTo(x + i * 8, y)
+    ctx.lineTo(x + i * 8 + 4, y + 12)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawPalmBadge(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
+  ctx.save()
+
+  // Pink circle
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fillStyle = COLORS.pink
+  ctx.fill()
+
+  // Palm tree
+  ctx.strokeStyle = COLORS.greenDeep
+  ctx.lineWidth = 2.5
   ctx.lineCap = 'round'
 
   // Trunk
   ctx.beginPath()
-  ctx.moveTo(0, 60)
-  ctx.quadraticCurveTo(5, 30, 0, 0)
+  ctx.moveTo(cx, cy + radius * 0.5)
+  ctx.quadraticCurveTo(cx + 2, cy, cx, cy - radius * 0.3)
   ctx.stroke()
 
   // Fronds
   const fronds = [
-    { angle: -40, len: 45 },
-    { angle: -15, len: 50 },
-    { angle: 15, len: 50 },
-    { angle: 40, len: 45 },
+    { angle: -50, len: radius * 0.45 },
+    { angle: -20, len: radius * 0.5 },
+    { angle: 10, len: radius * 0.5 },
+    { angle: 40, len: radius * 0.45 },
   ]
   for (const f of fronds) {
     ctx.beginPath()
-    ctx.moveTo(0, 5)
+    ctx.moveTo(cx, cy - radius * 0.2)
     const rad = (f.angle * Math.PI) / 180
-    const endX = Math.sin(rad) * f.len
-    const endY = 5 - Math.cos(rad) * f.len
-    const cpx = endX * 0.5
-    const cpy = 5 - Math.cos(rad) * f.len * 0.3
-    ctx.quadraticCurveTo(cpx, cpy, endX, endY)
+    const endX = cx + Math.sin(rad) * f.len
+    const endY = cy - radius * 0.2 - Math.cos(rad) * f.len
+    ctx.quadraticCurveTo(cx + Math.sin(rad) * f.len * 0.5, cy - radius * 0.2 - Math.cos(rad) * f.len * 0.3, endX, endY)
     ctx.stroke()
+  }
+
+  // Ring text: "HACKER HOUSE GOA · HACKER HOUSE GOA"
+  ctx.fillStyle = COLORS.greenDeep
+  ctx.font = `bold ${Math.round(radius * 0.14)}px "JetBrains Mono", monospace`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const text = 'HACKER HOUSE GOA · '
+  const totalAngle = Math.PI * 2
+  const charAngle = totalAngle / text.length
+  for (let i = 0; i < text.length; i++) {
+    const angle = -Math.PI / 2 + i * charAngle
+    ctx.save()
+    ctx.translate(cx + Math.cos(angle) * (radius * 0.78), cy + Math.sin(angle) * (radius * 0.78))
+    ctx.rotate(angle + Math.PI / 2)
+    ctx.fillText(text[i], 0, 0)
+    ctx.restore()
   }
 
   ctx.restore()
 }
 
-function drawSunMotif(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string) {
+function drawGlobeIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
   ctx.save()
-  ctx.fillStyle = color
-  ctx.globalAlpha = 0.9
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1.5
+  ctx.globalAlpha = 0.6
+
+  // Outer circle
   ctx.beginPath()
-  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Horizontal line
+  ctx.beginPath()
+  ctx.moveTo(cx - r, cy)
+  ctx.lineTo(cx + r, cy)
+  ctx.stroke()
+
+  // Vertical line
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - r)
+  ctx.lineTo(cx, cy + r)
+  ctx.stroke()
+
+  // Ellipses
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, r * 0.5, r, 0, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.restore()
+}
+
+function drawCrosshairIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1.2
+  ctx.globalAlpha = 0.7
+
+  // Circle
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Cross
+  ctx.beginPath()
+  ctx.moveTo(cx - r * 1.3, cy)
+  ctx.lineTo(cx + r * 1.3, cy)
+  ctx.moveTo(cx, cy - r * 1.3)
+  ctx.lineTo(cx, cy + r * 1.3)
+  ctx.stroke()
+
+  // Inner dot
+  ctx.beginPath()
+  ctx.arc(cx, cy, 2, 0, Math.PI * 2)
+  ctx.fillStyle = color
   ctx.fill()
 
-  // Rays
+  ctx.restore()
+}
+
+function drawDecorativeDots(ctx: CanvasRenderingContext2D, x: number, y: number, cols: number, rows: number, color: string) {
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.5
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      ctx.beginPath()
+      ctx.arc(x + col * 10, y + row * 10, 2, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}
+
+function drawBuilderStamp(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
+  ctx.save()
+
+  // Outer ring
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.strokeStyle = COLORS.pink
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+
+  // Inner ring
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius * 0.75, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Globe lines inside
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx - radius * 0.45, cy)
+  ctx.lineTo(cx + radius * 0.45, cy)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - radius * 0.45)
+  ctx.lineTo(cx, cy + radius * 0.45)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, radius * 0.25, radius * 0.45, 0, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Circular text: "BUILD • SHIP • REPEAT •"
+  ctx.fillStyle = COLORS.pink
+  ctx.font = `bold ${Math.round(radius * 0.13)}px "JetBrains Mono", monospace`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const text = 'BUILD • SHIP • REPEAT • '
+  const totalAngle = Math.PI * 2
+  const charAngle = totalAngle / text.length
+  for (let i = 0; i < text.length; i++) {
+    const angle = -Math.PI / 2 + i * charAngle
+    ctx.save()
+    ctx.translate(cx + Math.cos(angle) * (radius * 0.88), cy + Math.sin(angle) * (radius * 0.88))
+    ctx.rotate(angle + Math.PI / 2)
+    ctx.fillText(text[i], 0, 0)
+    ctx.restore()
+  }
+
+  ctx.restore()
+}
+
+function drawCornerCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+  ctx.save()
   ctx.strokeStyle = color
   ctx.lineWidth = 2
   ctx.globalAlpha = 0.5
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * 30 * Math.PI) / 180
-    ctx.beginPath()
-    ctx.moveTo(x + Math.cos(angle) * (radius + 4), y + Math.sin(angle) * (radius + 4))
-    ctx.lineTo(x + Math.cos(angle) * (radius + 14), y + Math.sin(angle) * (radius + 14))
-    ctx.stroke()
-  }
+  ctx.beginPath()
+  ctx.moveTo(x - size, y)
+  ctx.lineTo(x + size, y)
+  ctx.moveTo(x, y - size)
+  ctx.lineTo(x, y + size)
+  ctx.stroke()
   ctx.restore()
 }
 
-function drawPhotoWithFrame(
+function drawPalmSilhouette(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, color: string) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.scale(scale, scale)
+  ctx.fillStyle = color
+
+  // Trunk
+  ctx.fillRect(-2, 0, 4, 40)
+
+  // Fronds (simple triangular shapes)
+  ctx.beginPath()
+  ctx.moveTo(0, -5)
+  ctx.lineTo(-18, 15)
+  ctx.lineTo(-5, 5)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.moveTo(0, -5)
+  ctx.lineTo(18, 15)
+  ctx.lineTo(5, 5)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.moveTo(0, -8)
+  ctx.lineTo(-12, 12)
+  ctx.lineTo(-3, 2)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.moveTo(0, -8)
+  ctx.lineTo(12, 12)
+  ctx.lineTo(3, 2)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.restore()
+}
+
+function drawPhotoArea(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
   x: number,
   y: number,
   w: number,
   h: number,
-  borderWidth: number,
-  rotation: number
+  borderRadius: number
 ) {
   ctx.save()
 
-  // Drop shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.5)'
-  ctx.shadowBlur = 20
-  ctx.shadowOffsetX = 6
-  ctx.shadowOffsetY = 8
-
-  // Move to center of photo for rotation
-  const cx = x + w / 2
-  const cy = y + h / 2
-  ctx.translate(cx, cy)
-  ctx.rotate((rotation * Math.PI) / 180)
-  ctx.translate(-cx, -cy)
-
-  // Cream border (Polaroid style)
-  ctx.fillStyle = COLORS.cream
-  const borderX = x - borderWidth
-  const borderY = y - borderWidth
-  const borderW = w + borderWidth * 2
-  const borderH = h + borderWidth * 2
-  ctx.fillRect(borderX, borderY, borderW, borderH)
-
-  // Reset shadow for photo
-  ctx.shadowColor = 'transparent'
-  ctx.shadowBlur = 0
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = 0
-
-  // Draw photo
-  ctx.save()
+  // Pink outer border (brush stroke effect)
+  ctx.fillStyle = COLORS.pink
   ctx.beginPath()
-  ctx.rect(x, y, w, h)
+  ctx.roundRect(x - 8, y - 8, w + 16, h + 16, borderRadius + 6)
+  ctx.fill()
+
+  // Cream border
+  ctx.fillStyle = COLORS.cream
+  ctx.beginPath()
+  ctx.roundRect(x - 3, y - 3, w + 6, h + 6, borderRadius + 2)
+  ctx.fill()
+
+  // Clip and draw photo
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, borderRadius)
   ctx.clip()
   coverFitCrop(ctx, img, x, y, w, h)
-  ctx.restore()
-
-  // Duotone overlay
-  drawDuotoneOverlay(ctx, x, y, w, h)
 
   ctx.restore()
 }
@@ -385,109 +390,318 @@ export async function composeSoloId(
   const ctx = canvas.getContext('2d')!
 
   console.time('composeSoloId-background')
+  // === BACKGROUND ===
   ctx.fillStyle = COLORS.greenDeep
   ctx.fillRect(0, 0, W, H)
   drawGrainTexture(ctx, W, H)
-  drawDiagonalBlock(ctx, W, H)
-  drawTornEdge(ctx, W - 30, 40, H - 80, 'vertical', 10)
-  drawPalmMotif(ctx, -20, H * 0.35, 2.5, COLORS.yellow)
-  drawSunMotif(ctx, W - 60, 80, 40, COLORS.yellow)
-  ctx.save()
-  ctx.font = `bold 180px "Anton", sans-serif`
-  ctx.fillStyle = COLORS.cream
-  ctx.globalAlpha = 0.07
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-  ctx.fillText('001', 30, 20)
-  ctx.restore()
   console.timeEnd('composeSoloId-background')
 
   console.time('composeSoloId-photo')
-  const photoW = 620
-  const photoH = 780
-  const photoX = 60
-  const photoY = 140
-  const borderWidth = 14
-  const photoRotation = -2.5
+  // === PHOTO AREA (centered, large) ===
+  const photoX = 80
+  const photoY = 160
+  const photoW = 920
+  const photoH = 680
+  const photoRadius = 20
 
   const photoImg = new Image()
   const photoUrl = URL.createObjectURL(resizedPhoto)
   photoImg.src = photoUrl
   await new Promise((resolve) => { photoImg.onload = resolve })
 
-  drawPhotoWithFrame(ctx, photoImg, photoX, photoY, photoW, photoH, borderWidth, photoRotation)
+  drawPhotoArea(ctx, photoImg, photoX, photoY, photoW, photoH, photoRadius)
   URL.revokeObjectURL(photoUrl)
   console.timeEnd('composeSoloId-photo')
 
-  console.time('composeSoloId-stamp')
-  const stampCx = photoX + photoW + 40
-  const stampCy = photoY + photoH - 60
-  drawStamp(ctx, stampCx, stampCy, input.builderClass.tier, input.builderClass.title, 90)
-  console.timeEnd('composeSoloId-stamp')
-
-  console.time('composeSoloId-text')
+  console.time('composeSoloId-top')
+  // === TOP LEFT: "HH" ===
   ctx.save()
-  const nameX = photoX + photoW + 80
-  const nameMaxW = W - nameX - 40
-  ctx.font = `bold 82px "Anton", sans-serif`
-  ctx.fillStyle = COLORS.cream
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-
-  let displayName = input.name.toUpperCase()
-  while (ctx.measureText(displayName).width > nameMaxW && displayName.length > 3) {
-    displayName = displayName.slice(0, -1)
-  }
-  if (displayName !== input.name.toUpperCase()) displayName += '…'
-
-  const nameLines: string[] = []
-  const words = displayName.split(' ')
-  let currentLine = ''
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word
-    if (ctx.measureText(testLine).width > nameMaxW && currentLine) {
-      nameLines.push(currentLine)
-      currentLine = word
-    } else {
-      currentLine = testLine
-    }
-  }
-  if (currentLine) nameLines.push(currentLine)
-
-  const nameLineHeight = 88
-  const nameStartY = photoY + 40
-  for (let i = 0; i < nameLines.length && i < 4; i++) {
-    ctx.fillText(nameLines[i], nameX, nameStartY + i * nameLineHeight)
-  }
-  ctx.restore()
-
-  ctx.save()
-  ctx.font = `500 28px "JetBrains Mono", monospace`
+  ctx.font = `bold 130px "Anton", sans-serif`
   ctx.fillStyle = COLORS.yellow
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  const stackText = (input.stack || 'YOUR STACK').toUpperCase()
-  const stackY = nameStartY + Math.min(nameLines.length, 4) * nameLineHeight + 16
-  ctx.fillText(stackText, nameX, stackY)
+  ctx.fillText('HH', 40, 20)
   ctx.restore()
 
+  // === TOP RIGHT: "2026" ===
+  ctx.save()
+  ctx.font = `bold 120px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.pink
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillText('2026', W - 40, 20)
+  ctx.restore()
+
+  // === "GOA, INDIA" tag ===
+  ctx.save()
+  ctx.fillStyle = COLORS.yellow
+  ctx.fillRect(W - 220, 148, 180, 30)
+  ctx.font = `bold 16px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.greenDeep
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('GOA, INDIA', W - 130, 163)
+  ctx.restore()
+
+  // === "BUILD THIS. SHIP THIS. CHANGE SOMETHING." ===
+  ctx.save()
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('BUILD THIS.', 260, 40)
+  ctx.fillText('SHIP THIS.', 260, 58)
+  ctx.fillText('CHANGE SOMETHING.', 260, 76)
+  ctx.restore()
+
+  // === Crosshair icon ===
+  drawCrosshairIcon(ctx, 480, 60, 22, COLORS.cream)
+
+  // === "GOA" below HH ===
+  ctx.save()
+  ctx.font = `bold 110px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('GOA', 40, 145)
+  ctx.restore()
+
+  // === "LESS NOISE. MORE SIGNAL." ===
+  ctx.save()
+  ctx.font = `bold 12px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('LESS NOISE.', 40, 270)
+  ctx.fillText('MORE SIGNAL.', 40, 286)
+  ctx.restore()
+
+  // === Palm badge ===
+  drawPalmBadge(ctx, 80, 380, 55)
+
+  // === Globe icon left ===
+  drawGlobeIcon(ctx, 60, 530, 20, COLORS.yellow)
+
+  // === Corner crosses ===
+  drawCornerCross(ctx, 50, 580, 8, COLORS.yellow)
+  drawCornerCross(ctx, 130, 580, 8, COLORS.cream)
+
+  // === Vertical "BUILDER ID" on right ===
+  ctx.save()
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.yellow
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  const vertText = 'BUILDER ID'
+  for (let i = 0; i < vertText.length; i++) {
+    ctx.fillText(vertText[i], W - 55, 190 + i * 16)
+  }
+  ctx.restore()
+
+  // === "001" large number on right ===
   ctx.save()
   ctx.font = `bold 72px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('HH GOA 2026', W / 2, H * 0.77)
+  ctx.textBaseline = 'top'
+  ctx.fillText('001', W - 55, 380)
   ctx.restore()
 
+  // === Decorative dots ===
+  drawDecorativeDots(ctx, W - 100, 500, 5, 4, COLORS.yellow)
+
+  // === Corner crosses bottom right ===
+  drawCornerCross(ctx, W - 50, 580, 8, COLORS.cream)
+
+  console.timeEnd('composeSoloId-top')
+
+  console.time('composeSoloId-bottom')
+  // === BOTTOM CREAM SECTION ===
+  const bottomY = 880
+  const bottomH = H - bottomY
+
+  // Cream background with torn top edge
   ctx.save()
-  ctx.font = `500 24px "JetBrains Mono", monospace`
-  ctx.fillStyle = COLORS.yellow
-  ctx.globalAlpha = 0.7
+  ctx.fillStyle = COLORS.cream
+  ctx.beginPath()
+  ctx.moveTo(0, bottomY)
+  // Jagged/torn edge
+  for (let x = 0; x <= W; x += 12) {
+    ctx.lineTo(x, bottomY + (Math.random() * 6 - 3))
+  }
+  ctx.lineTo(W, H)
+  ctx.lineTo(0, H)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+
+  // === "BUILDER" label ===
+  let labelY = bottomY + 40
+  ctx.save()
+  ctx.fillStyle = COLORS.pink
+  ctx.fillRect(40, labelY, 140, 28)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('BUILDER', 50, labelY + 14)
+  ctx.restore()
+
+  // Hash marks after BUILDER
+  drawHashMarks(ctx, 190, labelY + 8, 10, COLORS.pink)
+
+  // === Name ===
+  labelY += 44
+  ctx.save()
+  ctx.font = `bold 64px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  let displayName = input.name.toUpperCase()
+  ctx.font = `bold 64px "Anton", sans-serif`
+  const maxNameW = W - 360
+  while (ctx.measureText(displayName).width > maxNameW && displayName.length > 3) {
+    displayName = displayName.slice(0, -1)
+  }
+  if (displayName !== input.name.toUpperCase()) displayName += '…'
+  ctx.fillText(displayName, 40, labelY)
+  ctx.restore()
+
+  // Underline
+  ctx.save()
+  ctx.strokeStyle = COLORS.pink
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(40, labelY + 72)
+  ctx.lineTo(maxNameW + 40, labelY + 72)
+  ctx.stroke()
+  ctx.restore()
+
+  // === "STACK" label ===
+  labelY += 90
+  ctx.save()
+  ctx.fillStyle = COLORS.pink
+  ctx.fillRect(40, labelY, 110, 28)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('STACK', 50, labelY + 14)
+  ctx.restore()
+
+  drawHashMarks(ctx, 160, labelY + 8, 10, COLORS.pink)
+
+  // === Stack text ===
+  labelY += 40
+  ctx.save()
+  ctx.font = `500 28px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText((input.stack || 'YOUR STACK').toUpperCase(), 40, labelY)
+  ctx.restore()
+
+  // Dashed underline
+  ctx.save()
+  ctx.strokeStyle = COLORS.ink
+  ctx.lineWidth = 1
+  ctx.setLineDash([6, 4])
+  ctx.beginPath()
+  ctx.moveTo(40, labelY + 36)
+  ctx.lineTo(340, labelY + 36)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.restore()
+
+  // === "BUILDER CLASS" label ===
+  labelY += 54
+  ctx.save()
+  ctx.fillStyle = COLORS.pink
+  ctx.fillRect(40, labelY, 200, 28)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('BUILDER CLASS', 50, labelY + 14)
+  ctx.restore()
+
+  drawHashMarks(ctx, 250, labelY + 8, 10, COLORS.pink)
+
+  // === Builder class text ===
+  labelY += 40
+  ctx.save()
+  ctx.font = `bold 56px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  const classText = input.builderClass.title.toUpperCase()
+  ctx.fillText(classText, 40, labelY)
+  ctx.restore()
+
+  // === Builder stamp (right side) ===
+  drawBuilderStamp(ctx, W - 140, bottomY + 140, 75)
+
+  // === "MADE FOR BUILDERS." box ===
+  ctx.save()
+  ctx.strokeStyle = COLORS.ink
+  ctx.lineWidth = 1.5
+  ctx.strokeRect(W - 240, bottomY + 240, 160, 60)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('MADE FOR', W - 230, bottomY + 252)
+  ctx.fillText('BUILDERS.', W - 230, bottomY + 270)
+  // Arrow
+  ctx.strokeStyle = COLORS.pink
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(W - 80, bottomY + 275)
+  ctx.lineTo(W - 65, bottomY + 265)
+  ctx.moveTo(W - 65, bottomY + 265)
+  ctx.lineTo(W - 65, bottomY + 275)
+  ctx.stroke()
+  ctx.restore()
+
+  console.timeEnd('composeSoloId-bottom')
+
+  console.time('composeSoloId-footer')
+  // === FOOTER BAR ===
+  const footerY = H - 50
+
+  // "#FRAMEINGOA" pink tag
+  ctx.save()
+  ctx.fillStyle = COLORS.pink
+  ctx.fillRect(40, footerY, 180, 32)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('#FRAMEINGOA', 50, footerY + 16)
+  ctx.restore()
+
+  // "THE BUILDERS ARE HERE."
+  ctx.save()
+  ctx.font = `500 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('#FrameInGoa', W / 2, H * 0.83)
+  ctx.fillText('THE BUILDERS ARE HERE.', W / 2, footerY + 16)
   ctx.restore()
-  console.timeEnd('composeSoloId-text')
+
+  // "HH GOA 2026" right
+  ctx.save()
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('HH GOA 2026', W - 40, footerY + 16)
+  ctx.restore()
+
+  // Small palm silhouette right
+  drawPalmSilhouette(ctx, W - 45, footerY - 10, 0.6, COLORS.pink)
+
+  console.timeEnd('composeSoloId-footer')
 
   console.time('composeSoloId-blob')
   const result = await new Promise<Blob>((resolve) => {
@@ -520,77 +734,193 @@ export async function composeSquadId(
   ctx.fillStyle = COLORS.greenDeep
   ctx.fillRect(0, 0, W, H)
   drawGrainTexture(ctx, W, H)
-  ctx.save()
-  ctx.fillStyle = COLORS.pink
-  ctx.beginPath()
-  ctx.moveTo(0, H * 0.65)
-  ctx.lineTo(W, H * 0.52)
-  ctx.lineTo(W, H * 0.78)
-  ctx.lineTo(0, H * 0.91)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-  drawTornEdge(ctx, 40, H - 30, W - 80, 'horizontal', 10)
-  drawPalmMotif(ctx, W - 60, H * 0.2, 2, COLORS.yellow)
-  drawSunMotif(ctx, 80, 70, 35, COLORS.yellow)
-  ctx.save()
-  ctx.font = `bold 160px "Anton", sans-serif`
-  ctx.fillStyle = COLORS.cream
-  ctx.globalAlpha = 0.06
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'top'
-  ctx.fillText('SQUAD', W - 40, 20)
-  ctx.restore()
   console.timeEnd('composeSquadId-background')
 
+  console.time('composeSquadId-top')
+  // === TOP: "HH" + "GOA" ===
+  ctx.save()
+  ctx.font = `bold 100px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.yellow
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('HH', 40, 20)
+  ctx.restore()
+
+  ctx.save()
+  ctx.font = `bold 100px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillText('GOA', 40, 115)
+  ctx.restore()
+
+  ctx.save()
+  ctx.font = `bold 90px "Anton", sans-serif`
+  ctx.fillStyle = COLORS.pink
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillText('2026', W - 40, 20)
+  ctx.restore()
+
+  // "GOA, INDIA" tag
+  ctx.save()
+  ctx.fillStyle = COLORS.yellow
+  ctx.fillRect(W - 200, 115, 160, 28)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.greenDeep
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('GOA, INDIA', W - 120, 129)
+  ctx.restore()
+
+  // "BUILDER ID" vertical
+  ctx.save()
+  ctx.font = `bold 13px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.yellow
+  ctx.textAlign = 'center'
+  for (let i = 0; i < 'SQUAD'.length; i++) {
+    ctx.fillText('SQUAD'[i], W - 45, 170 + i * 16)
+  }
+  ctx.restore()
+
+  // Crosshair
+  drawCrosshairIcon(ctx, 350, 60, 20, COLORS.cream)
+  console.timeEnd('composeSquadId-top')
+
   console.time('composeSquadId-photos')
+  // === PHOTO AREA: 4 photos in a row ===
   const numPeople = input.people.length
   const photoW = 240
-  const photoH = 300
-  const borderWidth = 10
-  const rotations = [-3, 2, -1.5, 3]
-  const totalGroupW = numPeople * photoW + (numPeople - 1) * 40
-  const startX = (W - totalGroupW) / 2
-  const photoY = 80
+  const photoH = 320
+  const photoGap = 30
+  const totalPhotosW = numPeople * photoW + (numPeople - 1) * photoGap
+  const photosStartX = (W - totalPhotosW) / 2
+  const photosY = 170
+  const photoRadius = 14
 
   for (let i = 0; i < numPeople; i++) {
     const person = input.people[i]
-    const px = startX + i * (photoW + 40)
-    const py = photoY + (i % 2 === 1 ? 20 : 0)
-    const rotation = rotations[i % rotations.length]
+    const px = photosStartX + i * (photoW + photoGap)
 
     const photoImg = new Image()
     const photoUrl = URL.createObjectURL(resizedPhotos[i])
     photoImg.src = photoUrl
     await new Promise((resolve) => { photoImg.onload = resolve })
 
-    drawPhotoWithFrame(ctx, photoImg, px, py, photoW, photoH, borderWidth, rotation)
+    drawPhotoArea(ctx, photoImg, px, photosY, photoW, photoH, photoRadius)
     URL.revokeObjectURL(photoUrl)
 
-    const stampCx = px + photoW / 2
-    const stampCy = py + photoH + 55
-    drawStamp(ctx, stampCx, stampCy, person.builderClass.tier, person.builderClass.title, 45)
+    // Small stamp below each
+    drawBuilderStamp(ctx, px + photoW / 2, photosY + photoH + 40, 30)
+
+    // Builder class label below
+    ctx.save()
+    ctx.font = `bold 11px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.ink
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText(person.builderClass.title.toUpperCase(), px + photoW / 2, photosY + photoH + 80)
+    ctx.restore()
   }
+
+  // Decorative dots
+  drawDecorativeDots(ctx, 50, photosY + photoH + 120, 5, 3, COLORS.yellow)
+  drawDecorativeDots(ctx, W - 90, photosY + photoH + 120, 5, 3, COLORS.yellow)
   console.timeEnd('composeSquadId-photos')
 
-  console.time('composeSquadId-text')
-  ctx.save()
-  ctx.font = `bold 64px "Anton", sans-serif`
-  ctx.fillStyle = COLORS.cream
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('HH GOA 2026 · SQUAD', W / 2, H * 0.82)
-  ctx.restore()
+  console.time('composeSquadId-bottom')
+  // === BOTTOM CREAM SECTION ===
+  const bottomY = 620
 
   ctx.save()
-  ctx.font = `500 22px "JetBrains Mono", monospace`
-  ctx.fillStyle = COLORS.yellow
-  ctx.globalAlpha = 0.7
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('#FrameInGoa', W / 2, H * 0.89)
+  ctx.fillStyle = COLORS.cream
+  ctx.beginPath()
+  ctx.moveTo(0, bottomY)
+  for (let x = 0; x <= W; x += 12) {
+    ctx.lineTo(x, bottomY + (Math.random() * 6 - 3))
+  }
+  ctx.lineTo(W, H)
+  ctx.lineTo(0, H)
+  ctx.closePath()
+  ctx.fill()
   ctx.restore()
-  console.timeEnd('composeSquadId-text')
+
+  // Names in a row
+  const namesY = bottomY + 30
+  const nameSpacing = W / numPeople
+  for (let i = 0; i < numPeople; i++) {
+    const person = input.people[i]
+    const nx = nameSpacing * i + nameSpacing / 2
+
+    // "BUILDER" label
+    ctx.save()
+    ctx.fillStyle = COLORS.pink
+    ctx.fillRect(nx - 50, namesY, 100, 22)
+    ctx.font = `bold 11px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.cream
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('BUILDER', nx, namesY + 11)
+    ctx.restore()
+
+    drawHashMarks(ctx, nx + 55, namesY + 5, 6, COLORS.pink)
+
+    // Name
+    ctx.save()
+    ctx.font = `bold 36px "Anton", sans-serif`
+    ctx.fillStyle = COLORS.ink
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    let name = person.name.toUpperCase()
+    const maxW = nameSpacing - 40
+    while (ctx.measureText(name).width > maxW && name.length > 3) {
+      name = name.slice(0, -1)
+    }
+    if (name !== person.name.toUpperCase()) name += '…'
+    ctx.fillText(name, nx, namesY + 30)
+    ctx.restore()
+
+    // Stack
+    ctx.save()
+    ctx.font = `500 14px "JetBrains Mono", monospace`
+    ctx.fillStyle = COLORS.ink
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText((person.stack || '—').toUpperCase(), nx, namesY + 72)
+    ctx.restore()
+  }
+
+  // "THE BUILDERS ARE HERE."
+  ctx.save()
+  ctx.font = `500 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillText('THE BUILDERS ARE HERE.', W / 2, bottomY + 140)
+  ctx.restore()
+
+  // "#FRAMEINGOA" tag
+  ctx.save()
+  ctx.fillStyle = COLORS.pink
+  ctx.fillRect(40, H - 50, 180, 32)
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.cream
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('#FRAMEINGOA', 50, H - 34)
+  ctx.restore()
+
+  // "HH GOA 2026"
+  ctx.save()
+  ctx.font = `bold 14px "JetBrains Mono", monospace`
+  ctx.fillStyle = COLORS.ink
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('HH GOA 2026', W - 40, H - 34)
+  ctx.restore()
+
+  drawPalmSilhouette(ctx, W - 45, H - 60, 0.5, COLORS.pink)
+  console.timeEnd('composeSquadId-bottom')
 
   console.time('composeSquadId-blob')
   const result = await new Promise<Blob>((resolve) => {

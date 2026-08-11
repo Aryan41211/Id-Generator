@@ -11,6 +11,7 @@ import UploadSlot from '@/components/tool/UploadSlot'
 import PersonalizeForm from '@/components/tool/PersonalizeForm'
 import IdCanvas from '@/components/tool/IdCanvas'
 import BuilderClassReveal from '@/components/tool/BuilderClassReveal'
+import DownloadButton from '@/components/tool/DownloadButton'
 
 interface PersonData {
   image: Blob | null
@@ -149,6 +150,11 @@ export default function Home() {
               people={people}
               onImageReady={handleImageGenerated}
             />
+            
+            {/* Download Button */}
+            <div className="mt-8">
+              <DownloadButton imageBlob={generatedImage} mode={mode} />
+            </div>
           </div>
         </div>
       </section>

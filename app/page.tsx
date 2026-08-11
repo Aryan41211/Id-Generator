@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import TickerBar from '@/components/landing/TickerBar'
 import Hero from '@/components/landing/Hero'
 import HowItWorksStrip from '@/components/landing/HowItWorksStrip'
@@ -8,48 +8,57 @@ import FeatureTagCard from '@/components/landing/FeatureTagCard'
 import SiteFooter from '@/components/landing/SiteFooter'
 import ModeToggle from '@/components/tool/ModeToggle'
 import UploadSlot from '@/components/tool/UploadSlot'
+import PersonalizeForm from '@/components/tool/PersonalizeForm'
+
+interface PersonData {
+  image: Blob | null
+  name: string
+  stack: string
+  builderClass: { title: string; tier: string } | null
+}
 
 export default function Home() {
   const [mode, setMode] = useState<'solo' | 'squad'>('solo')
-  const [images, setImages] = useState<Blob[]>([])
+  const [people, setPeople] = useState<PersonData[]>([
+    { image: null, name: '', stack: '', builderClass: null }
+  ])
 
   const handleModeChange = (newMode: 'solo' | 'squad') => {
     setMode(newMode)
-    // Reset images when switching modes
     if (newMode === 'solo') {
-      setImages(images.slice(0, 1))
+      setPeople(people.slice(0, 1))
     } else {
-      // Keep existing images for squad mode
-    }
-  }
-
-  const handleImageReady = (imageBlob: Blob, index?: number) => {
-    if (mode === 'solo') {
-      setImages([imageBlob])
-    } else {
-      if (index !== undefined) {
-        const newImages = [...images]
-        newImages[index] = imageBlob
-        setImages(newImages)
-      } else {
-        setImages([...images, imageBlob])
+      // Ensure at least one person for squad mode
+      if (people.length === 0) {
+        setPeople([{ image: null, name: '', stack: '', builderClass: null }])
       }
     }
   }
 
+  const handleImageReady = (imageBlob: Blob, index: number) => {
+    const newPeople = [...people]
+    newPeople[index] = { ...newPeople[index], image: imageBlob }
+    setPeople(newPeople)
+  }
+
   const handleRemoveImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index)
-    setImages(newImages)
+    const newPeople = people.filter((_, i) => i !== index)
+    setPeople(newPeople)
   }
 
   const addTeammate = () => {
-    if (images.length < 4) {
-      // Add an empty slot by adding a placeholder
-      setImages([...images, null as unknown as Blob])
+    if (people.length < 4) {
+      setPeople([...people, { image: null, name: '', stack: '', builderClass: null }])
     }
   }
 
-  console.log('Images state:', images)
+  const handlePersonalize = useCallback((index: number, data: { name: string; stack: string; builderClass: { title: string; tier: string } }) => {
+    const newPeople = [...people]
+    newPeople[index] = { ...newPeople[index], ...data }
+    setPeople(newPeople)
+  }, [people])
+
+  console.log('People state:', people)
 
   return (
     <main className="min-h-screen">
@@ -69,40 +78,49 @@ export default function Home() {
             </h2>
             
             {mode === 'solo' ? (
-              <div className="max-w-md mx-auto">
+              <div className="max-w-md mx-auto space-y-8">
                 <UploadSlot 
-                  onImageReady={(blob) => handleImageReady(blob)} 
+                  onImageReady={(blob) => handleImageReady(blob, 0)} 
+                />
+                <PersonalizeForm 
+                  onPersonalize={(data) => handlePersonalize(0, data)}
                 />
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {images.map((_, index) => (
-                    <div key={index} className="relative">
-                      <div className="text-sm font-mono-label text-hh-ink mb-2">
+                <div className="space-y-8 mb-6">
+                  {people.map((person, index) => (
+                    <div key={index} className="border border-hh-cream-line rounded-lg p-6">
+                      <div className="text-sm font-mono-label text-hh-ink mb-4 uppercase tracking-wider">
                         Crew member {index + 1}
                       </div>
-                      <UploadSlot
-                        onImageReady={(blob) => handleImageReady(blob, index)}
-                        onRemove={() => handleRemoveImage(index)}
-                        showRemove={true}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <UploadSlot
+                          onImageReady={(blob) => handleImageReady(blob, index)}
+                          onRemove={() => handleRemoveImage(index)}
+                          showRemove={people.length > 1}
+                        />
+                        <PersonalizeForm 
+                          onPersonalize={(data) => handlePersonalize(index, data)}
+                          label={`Crew member ${index + 1}`}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
                 
-                {images.length < 4 && (
+                {people.length < 4 && (
                   <button
                     onClick={addTeammate}
                     className="w-full border-2 border-hh-pink text-hh-pink py-3 rounded-lg font-mono-label uppercase tracking-wider hover:bg-hh-pink hover:text-hh-cream transition-colors"
                   >
-                    + Add teammate ({images.length}/4)
+                    + Add teammate ({people.length}/4)
                   </button>
                 )}
                 
-                {images.length > 0 && (
+                {people.length > 0 && (
                   <div className="text-center mt-4 text-sm font-mono-label text-hh-ink">
-                    {images.length}/4 crew members added
+                    {people.length}/4 crew members added
                   </div>
                 )}
               </div>

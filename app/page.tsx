@@ -9,6 +9,8 @@ import SiteFooter from '@/components/landing/SiteFooter'
 import ModeToggle from '@/components/tool/ModeToggle'
 import UploadSlot from '@/components/tool/UploadSlot'
 import PersonalizeForm from '@/components/tool/PersonalizeForm'
+import IdCanvas from '@/components/tool/IdCanvas'
+import BuilderClassReveal from '@/components/tool/BuilderClassReveal'
 
 interface PersonData {
   image: Blob | null
@@ -22,6 +24,7 @@ export default function Home() {
   const [people, setPeople] = useState<PersonData[]>([
     { image: null, name: '', stack: '', builderClass: null }
   ])
+  const [generatedImage, setGeneratedImage] = useState<Blob | null>(null)
 
   const handleModeChange = (newMode: 'solo' | 'squad') => {
     setMode(newMode)
@@ -33,17 +36,20 @@ export default function Home() {
         setPeople([{ image: null, name: '', stack: '', builderClass: null }])
       }
     }
+    setGeneratedImage(null)
   }
 
   const handleImageReady = (imageBlob: Blob, index: number) => {
     const newPeople = [...people]
     newPeople[index] = { ...newPeople[index], image: imageBlob }
     setPeople(newPeople)
+    setGeneratedImage(null)
   }
 
   const handleRemoveImage = (index: number) => {
     const newPeople = people.filter((_, i) => i !== index)
     setPeople(newPeople)
+    setGeneratedImage(null)
   }
 
   const addTeammate = () => {
@@ -56,7 +62,15 @@ export default function Home() {
     const newPeople = [...people]
     newPeople[index] = { ...newPeople[index], ...data }
     setPeople(newPeople)
+    setGeneratedImage(null)
   }, [people])
+
+  const handleImageGenerated = useCallback((blob: Blob) => {
+    setGeneratedImage(blob)
+  }, [])
+
+  // Get the first person's builder class for the reveal animation
+  const firstPersonBuilderClass = people[0]?.builderClass
 
   console.log('People state:', people)
 
@@ -125,6 +139,16 @@ export default function Home() {
                 )}
               </div>
             )}
+            
+            {/* Builder Class Reveal */}
+            <BuilderClassReveal builderClass={firstPersonBuilderClass} />
+            
+            {/* Generated Image Preview */}
+            <IdCanvas 
+              mode={mode}
+              people={people}
+              onImageReady={handleImageGenerated}
+            />
           </div>
         </div>
       </section>

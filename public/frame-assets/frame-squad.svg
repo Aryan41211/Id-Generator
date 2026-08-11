@@ -1,49 +1,9 @@
 <svg viewBox="0 0 1350 1080" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="noiseFilter">
+    <filter id="grain">
       <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
     </filter>
   </defs>
-  
-  <!-- Background -->
   <rect width="100%" height="100%" fill="#0b3d24"/>
-  <rect width="100%" height="100%" filter="url(#noiseFilter)" opacity="0.04"/>
-  
-  <!-- Photo slots - 4 slots arranged in a row -->
-  <!-- Slot 1 -->
-  <rect x="100" y="150" width="250" height="250" rx="15" fill="#14532d" stroke="#d8cfa8" stroke-width="3"/>
-  <text x="225" y="440" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="18" fill="#f6d33c">MEMBER 1</text>
-  
-  <!-- Slot 2 -->
-  <rect x="400" y="150" width="250" height="250" rx="15" fill="#14532d" stroke="#d8cfa8" stroke-width="3"/>
-  <text x="525" y="440" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="18" fill="#f6d33c">MEMBER 2</text>
-  
-  <!-- Slot 3 -->
-  <rect x="700" y="150" width="250" height="250" rx="15" fill="#14532d" stroke="#d8cfa8" stroke-width="3"/>
-  <text x="825" y="440" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="18" fill="#f6d33c">MEMBER 3</text>
-  
-  <!-- Slot 4 -->
-  <rect x="1000" y="150" width="250" height="250" rx="15" fill="#14532d" stroke="#d8cfa8" stroke-width="3"/>
-  <text x="1125" y="440" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="18" fill="#f6d33c">MEMBER 4</text>
-  
-  <!-- Builder class pills for each member -->
-  <rect x="125" y="470" width="200" height="40" rx="20" fill="#f6d33c"/>
-  <text x="225" y="495" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#123524">CLASS 1</text>
-  
-  <rect x="425" y="470" width="200" height="40" rx="20" fill="#f6d33c"/>
-  <text x="525" y="495" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#123524">CLASS 2</text>
-  
-  <rect x="725" y="470" width="200" height="40" rx="20" fill="#f6d33c"/>
-  <text x="825" y="495" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#123524">CLASS 3</text>
-  
-  <rect x="1025" y="470" width="200" height="40" rx="20" fill="#f6d33c"/>
-  <text x="1125" y="495" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#123524">CLASS 4</text>
-  
-  <!-- HH GOA 2026 · SQUAD wordmark -->
-  <text x="675" y="600" text-anchor="middle" font-family="Anton, sans-serif" font-size="64" fill="#f6efd8">HH GOA 2026 · SQUAD</text>
-  
-  <!-- Decorative motifs -->
-  <circle cx="100" cy="900" r="35" fill="#f6d33c"/>
-  <path d="M1250 850 L1250 950 M1250 900 C1220 870 1190 890 1170 860 M1250 900 C1280 870 1310 890 1330 860" 
-        stroke="#ec1263" stroke-width="4" fill="none"/>
+  <rect width="100%" height="100%" filter="url(#grain)" opacity="0.04"/>
 </svg>

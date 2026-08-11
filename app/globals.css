@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --hh-green-deep: #0b3d24;
+  --hh-green-mid: #14532d;
+  --hh-pink: #ec1263;
+  --hh-yellow: #f6d33c;
+  --hh-cream: #f6efd8;
+  --hh-cream-line: #d8cfa8;
+  --hh-ink: #123524;
+}
+
+body {
+  background-color: var(--hh-green-deep);
+  color: var(--hh-cream);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.grain-overlay {
+  position: relative;
+}
+
+.grain-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/frame-assets/noise-overlay.svg');
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 1;
+}

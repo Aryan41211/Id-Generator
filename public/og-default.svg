@@ -1,0 +1,24 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="noiseFilter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#0b3d24"/>
+  <rect width="100%" height="100%" filter="url(#noiseFilter)" opacity="0.04"/>
+  
+  <!-- Content -->
+  <text x="600" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="72" fill="#f6efd8">HH GOA 2026</text>
+  <text x="600" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="#f6d33c">BUILDER ID GENERATOR</text>
+  <text x="600" y="380" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#f6efd8" opacity="0.6">Build your personalized ID in seconds</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="100" cy="500" r="40" fill="#f6d33c"/>
+  <path d="M1100 450 L1100 550 M1100 500 C1070 470 1040 490 1020 460 M1100 500 C1130 470 1160 490 1180 460" 
+        stroke="#ec1263" stroke-width="4" fill="none"/>
+  
+  <!-- Hashtag -->
+  <text x="600" y="560" text-anchor="middle" font-family="Arial, monospace" font-size="28" fill="#ec1263">#FrameInGoa</text>
+</svg>

@@ -4,7 +4,8 @@ interface ShareCaptionInput {
 }
 
 export function buildShareCaption({ mode, builderClass }: ShareCaptionInput): string {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://hh-goa-id.vercel.app'
+  // Use a default URL for server-side rendering, actual URL will be used on client
+  const baseUrl = 'https://hh-goa-id.vercel.app'
   
   if (mode === 'solo' && builderClass) {
     return `Just generated my HH Goa 2026 Builder ID — I'm a ${builderClass.title} 🌴 Make yours in seconds → ${baseUrl} #FrameInGoa`

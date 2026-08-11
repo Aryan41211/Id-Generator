@@ -29,15 +29,10 @@ export default function ShareToXButton({ imageBlob, mode, builderClass }: ShareT
         const caption = buildShareCaption({ mode, builderClass })
         
         // Try to share with the file
-        const shared = await navigator.share({
+        await navigator.share({
           files: [file],
           text: caption
         })
-        
-        // If share was successful or user cancelled, we're done
-        if (shared) {
-          console.log('Share successful')
-        }
       } else {
         // Desktop fallback: POST to server and get OG link
         const formData = new FormData()
@@ -57,7 +52,8 @@ export default function ShareToXButton({ imageBlob, mode, builderClass }: ShareT
         
         // Build the share URL
         const shareUrl = `${window.location.origin}/s/${id}`
-        const caption = buildShareCaption({ mode, builderClass })
+        // Get caption with actual origin
+        const caption = buildShareCaption({ mode, builderClass }).replace('https://hh-goa-id.vercel.app', window.location.origin)
         
         // Open Twitter intent in a new tab
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(caption)}&url=${encodeURIComponent(shareUrl)}`

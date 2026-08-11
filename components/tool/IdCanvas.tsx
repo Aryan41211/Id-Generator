@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { composeSoloId, composeSquadId } from '@/lib/canvasCompose'
 
 interface PersonData {
   image: Blob | null
@@ -22,6 +21,11 @@ export default function IdCanvas({ mode, people, onImageReady }: IdCanvasProps) 
 
   useEffect(() => {
     const generateImage = async () => {
+      // Check if we're on the client side
+      if (typeof window === 'undefined') {
+        return
+      }
+      
       // Check if we have all required data
       const validPeople = people.filter(p => p.image && p.name && p.builderClass)
       
@@ -45,6 +49,9 @@ export default function IdCanvas({ mode, people, onImageReady }: IdCanvasProps) 
       setIsLoading(true)
       
       try {
+        // Dynamically import canvasCompose to avoid server-side rendering issues
+        const { composeSoloId, composeSquadId } = await import('@/lib/canvasCompose')
+        
         let blob: Blob
         
         if (mode === 'solo') {

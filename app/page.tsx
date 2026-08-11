@@ -12,6 +12,7 @@ import PersonalizeForm from '@/components/tool/PersonalizeForm'
 import IdCanvas from '@/components/tool/IdCanvas'
 import BuilderClassReveal from '@/components/tool/BuilderClassReveal'
 import DownloadButton from '@/components/tool/DownloadButton'
+import ShareToXButton from '@/components/tool/ShareToXButton'
 
 interface PersonData {
   image: Blob | null
@@ -151,10 +152,17 @@ export default function Home() {
               onImageReady={handleImageGenerated}
             />
             
-            {/* Download Button */}
-            <div className="mt-8">
-              <DownloadButton imageBlob={generatedImage} mode={mode} />
-            </div>
+            {/* Download and Share Buttons */}
+            {generatedImage && (
+              <div className="mt-8 space-y-4">
+                <DownloadButton imageBlob={generatedImage} mode={mode} />
+                <ShareToXButton 
+                  imageBlob={generatedImage} 
+                  mode={mode} 
+                  builderClass={firstPersonBuilderClass || undefined}
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>

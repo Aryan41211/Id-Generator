@@ -46,6 +46,36 @@ function getTierTextColor(tier: string): string {
   }
 }
 
+const MAX_WORKING_DIMENSION = 1600
+
+async function resizeImage(blob: Blob): Promise<Blob> {
+  const url = URL.createObjectURL(blob)
+  const img = new Image()
+  img.src = url
+  await new Promise((resolve) => { img.onload = resolve })
+
+  const longEdge = Math.max(img.width, img.height)
+  if (longEdge <= MAX_WORKING_DIMENSION) {
+    URL.revokeObjectURL(url)
+    return blob
+  }
+
+  const scale = MAX_WORKING_DIMENSION / longEdge
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, w, h)
+  URL.revokeObjectURL(url)
+
+  return new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.92)
+  })
+}
+
 function coverFitCrop(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -342,29 +372,26 @@ export async function composeSoloId(
 ): Promise<Blob> {
   const W = outputSize.width
   const H = outputSize.height
+
+  console.time('composeSoloId-total')
+
+  console.time('composeSoloId-resize')
+  const resizedPhoto = await resizeImage(input.photo)
+  console.timeEnd('composeSoloId-resize')
+
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
 
-  // 1. Full-bleed green-deep background
+  console.time('composeSoloId-background')
   ctx.fillStyle = COLORS.greenDeep
   ctx.fillRect(0, 0, W, H)
   drawGrainTexture(ctx, W, H)
-
-  // 2. Diagonal pink block across bottom third
   drawDiagonalBlock(ctx, W, H)
-
-  // 3. Torn/perforated edge along right side
   drawTornEdge(ctx, W - 30, 40, H - 80, 'vertical', 10)
-
-  // 4. Decorative palm bleeding off left edge
   drawPalmMotif(ctx, -20, H * 0.35, 2.5, COLORS.yellow)
-
-  // 5. Sun motif bleeding off top-right
   drawSunMotif(ctx, W - 60, 80, 40, COLORS.yellow)
-
-  // 6. Large decorative rank number in top-left
   ctx.save()
   ctx.font = `bold 180px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
@@ -373,8 +400,9 @@ export async function composeSoloId(
   ctx.textBaseline = 'top'
   ctx.fillText('001', 30, 20)
   ctx.restore()
+  console.timeEnd('composeSoloId-background')
 
-  // 7. Photo — rotated Polaroid style, upper-left area
+  console.time('composeSoloId-photo')
   const photoW = 620
   const photoH = 780
   const photoX = 60
@@ -383,27 +411,24 @@ export async function composeSoloId(
   const photoRotation = -2.5
 
   const photoImg = new Image()
-  const photoUrl = URL.createObjectURL(input.photo)
+  const photoUrl = URL.createObjectURL(resizedPhoto)
   photoImg.src = photoUrl
-  await new Promise((resolve) => {
-    photoImg.onload = resolve
-  })
+  await new Promise((resolve) => { photoImg.onload = resolve })
 
   drawPhotoWithFrame(ctx, photoImg, photoX, photoY, photoW, photoH, borderWidth, photoRotation)
   URL.revokeObjectURL(photoUrl)
+  console.timeEnd('composeSoloId-photo')
 
-  // 8. Builder class stamp — overlapping bottom-right corner of photo
+  console.time('composeSoloId-stamp')
   const stampCx = photoX + photoW + 40
   const stampCy = photoY + photoH - 60
-  const stampRadius = 90
-  drawStamp(ctx, stampCx, stampCy, input.builderClass.tier, input.builderClass.title, stampRadius)
+  drawStamp(ctx, stampCx, stampCy, input.builderClass.tier, input.builderClass.title, 90)
+  console.timeEnd('composeSoloId-stamp')
 
-  // 9. Name — BIG, dominant, positioned on the right side
+  console.time('composeSoloId-text')
   ctx.save()
   const nameX = photoX + photoW + 80
   const nameMaxW = W - nameX - 40
-
-  // Truncate name to fit
   ctx.font = `bold 82px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
   ctx.textAlign = 'left'
@@ -415,7 +440,6 @@ export async function composeSoloId(
   }
   if (displayName !== input.name.toUpperCase()) displayName += '…'
 
-  // Word wrap if needed
   const nameLines: string[] = []
   const words = displayName.split(' ')
   let currentLine = ''
@@ -437,7 +461,6 @@ export async function composeSoloId(
   }
   ctx.restore()
 
-  // 10. Stack/role — small, under name, yellow
   ctx.save()
   ctx.font = `500 28px "JetBrains Mono", monospace`
   ctx.fillStyle = COLORS.yellow
@@ -448,7 +471,6 @@ export async function composeSoloId(
   ctx.fillText(stackText, nameX, stackY)
   ctx.restore()
 
-  // 11. "HH GOA 2026" wordmark — overlapping the diagonal panel at bottom
   ctx.save()
   ctx.font = `bold 72px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
@@ -457,7 +479,6 @@ export async function composeSoloId(
   ctx.fillText('HH GOA 2026', W / 2, H * 0.77)
   ctx.restore()
 
-  // 12. "#FrameInGoa" small tag
   ctx.save()
   ctx.font = `500 24px "JetBrains Mono", monospace`
   ctx.fillStyle = COLORS.yellow
@@ -466,12 +487,15 @@ export async function composeSoloId(
   ctx.textBaseline = 'middle'
   ctx.fillText('#FrameInGoa', W / 2, H * 0.83)
   ctx.restore()
+  console.timeEnd('composeSoloId-text')
 
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob!)
-    }, 'image/png')
+  console.time('composeSoloId-blob')
+  const result = await new Promise<Blob>((resolve) => {
+    canvas.toBlob((blob) => { resolve(blob!) }, 'image/png')
   })
+  console.timeEnd('composeSoloId-blob')
+  console.timeEnd('composeSoloId-total')
+  return result
 }
 
 export async function composeSquadId(
@@ -480,17 +504,22 @@ export async function composeSquadId(
 ): Promise<Blob> {
   const W = outputSize.width
   const H = outputSize.height
+
+  console.time('composeSquadId-total')
+
+  console.time('composeSquadId-resize')
+  const resizedPhotos = await Promise.all(input.people.map(p => resizeImage(p.photo)))
+  console.timeEnd('composeSquadId-resize')
+
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
 
-  // 1. Full-bleed green-deep background
+  console.time('composeSquadId-background')
   ctx.fillStyle = COLORS.greenDeep
   ctx.fillRect(0, 0, W, H)
   drawGrainTexture(ctx, W, H)
-
-  // 2. Diagonal pink block — narrower for landscape
   ctx.save()
   ctx.fillStyle = COLORS.pink
   ctx.beginPath()
@@ -501,15 +530,9 @@ export async function composeSquadId(
   ctx.closePath()
   ctx.fill()
   ctx.restore()
-
-  // 3. Torn edge along bottom
   drawTornEdge(ctx, 40, H - 30, W - 80, 'horizontal', 10)
-
-  // 4. Decorative elements
   drawPalmMotif(ctx, W - 60, H * 0.2, 2, COLORS.yellow)
   drawSunMotif(ctx, 80, 70, 35, COLORS.yellow)
-
-  // 5. Large rank number
   ctx.save()
   ctx.font = `bold 160px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
@@ -518,15 +541,14 @@ export async function composeSquadId(
   ctx.textBaseline = 'top'
   ctx.fillText('SQUAD', W - 40, 20)
   ctx.restore()
+  console.timeEnd('composeSquadId-background')
 
-  // 6. Photos with staggered rotation
+  console.time('composeSquadId-photos')
   const numPeople = input.people.length
   const photoW = 240
   const photoH = 300
   const borderWidth = 10
   const rotations = [-3, 2, -1.5, 3]
-
-  // Calculate layout — center the group
   const totalGroupW = numPeople * photoW + (numPeople - 1) * 40
   const startX = (W - totalGroupW) / 2
   const photoY = 80
@@ -534,27 +556,24 @@ export async function composeSquadId(
   for (let i = 0; i < numPeople; i++) {
     const person = input.people[i]
     const px = startX + i * (photoW + 40)
-    const py = photoY + (i % 2 === 1 ? 20 : 0) // slight stagger
+    const py = photoY + (i % 2 === 1 ? 20 : 0)
     const rotation = rotations[i % rotations.length]
 
     const photoImg = new Image()
-    const photoUrl = URL.createObjectURL(person.photo)
+    const photoUrl = URL.createObjectURL(resizedPhotos[i])
     photoImg.src = photoUrl
-    await new Promise((resolve) => {
-      photoImg.onload = resolve
-    })
+    await new Promise((resolve) => { photoImg.onload = resolve })
 
     drawPhotoWithFrame(ctx, photoImg, px, py, photoW, photoH, borderWidth, rotation)
     URL.revokeObjectURL(photoUrl)
 
-    // Small stamp below each photo
     const stampCx = px + photoW / 2
     const stampCy = py + photoH + 55
-    const stampRadius = 45
-    drawStamp(ctx, stampCx, stampCy, person.builderClass.tier, person.builderClass.title, stampRadius)
+    drawStamp(ctx, stampCx, stampCy, person.builderClass.tier, person.builderClass.title, 45)
   }
+  console.timeEnd('composeSquadId-photos')
 
-  // 7. "HH GOA 2026 · SQUAD" wordmark
+  console.time('composeSquadId-text')
   ctx.save()
   ctx.font = `bold 64px "Anton", sans-serif`
   ctx.fillStyle = COLORS.cream
@@ -563,7 +582,6 @@ export async function composeSquadId(
   ctx.fillText('HH GOA 2026 · SQUAD', W / 2, H * 0.82)
   ctx.restore()
 
-  // 8. "#FrameInGoa" tag
   ctx.save()
   ctx.font = `500 22px "JetBrains Mono", monospace`
   ctx.fillStyle = COLORS.yellow
@@ -572,10 +590,13 @@ export async function composeSquadId(
   ctx.textBaseline = 'middle'
   ctx.fillText('#FrameInGoa', W / 2, H * 0.89)
   ctx.restore()
+  console.timeEnd('composeSquadId-text')
 
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob!)
-    }, 'image/png')
+  console.time('composeSquadId-blob')
+  const result = await new Promise<Blob>((resolve) => {
+    canvas.toBlob((blob) => { resolve(blob!) }, 'image/png')
   })
+  console.timeEnd('composeSquadId-blob')
+  console.timeEnd('composeSquadId-total')
+  return result
 }

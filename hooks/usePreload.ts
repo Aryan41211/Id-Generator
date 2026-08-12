@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import { ensureFonts } from '@/lib/ensureFonts'
-import { preloadFrameAssets } from '@/lib/canvasCompose'
 
 export function usePreload() {
   const preloaded = useRef(false)
@@ -12,7 +11,6 @@ export function usePreload() {
     preloaded.current = true
 
     ensureFonts()
-    preloadFrameAssets()
 
     import('heic2any').then(() => {
       console.log('[preload] heic2any WASM loaded')

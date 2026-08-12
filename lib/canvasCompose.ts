@@ -256,6 +256,9 @@ export async function composeSoloId(
 
   console.time('composeSoloId-total')
 
+  const { ensureFonts } = await import('@/lib/ensureFonts')
+  await ensureFonts()
+
   const { img: photoImg } = await loadAndResize(input.photo)
 
   const canvas = document.createElement('canvas')
@@ -334,6 +337,9 @@ export async function composeSquadId(
 
   console.time('composeSquadId-total')
 
+  const { ensureFonts } = await import('@/lib/ensureFonts')
+  await ensureFonts()
+
   const loadedImages = await Promise.all(input.people.map(p => loadAndResize(p.photo)))
 
   const canvas = document.createElement('canvas')
@@ -346,7 +352,7 @@ export async function composeSquadId(
   ctx.fillRect(0, 0, W, H)
   drawGrainTexture(ctx, W, H)
 
-  // 2. Photos
+  // 2. Photos (frames + tape + pushpins only)
   const numPeople = Math.min(input.people.length, 3)
   const photoW = 300
   const photoH = 280
@@ -356,6 +362,8 @@ export async function composeSquadId(
   const photosY = 240
   const rotations = [-3, 0, 2.5]
   const tapeColors = [COLORS.yellow, COLORS.yellow, COLORS.pink]
+
+  const photoPositions: Array<{ cx: number; cy: number; numCy: number }> = []
 
   for (let i = 0; i < numPeople; i++) {
     const px = photosStartX + i * (photoW + photoGap)
@@ -371,6 +379,8 @@ export async function composeSquadId(
 
     const numCx = px + photoW / 2
     const numCy = py + photoH + 30
+    photoPositions.push({ cx: numCx, cy: numCy + 26, numCy })
+
     ctx.save()
     ctx.beginPath()
     ctx.arc(numCx, numCy, 16, 0, Math.PI * 2)
@@ -382,8 +392,16 @@ export async function composeSquadId(
     ctx.textBaseline = 'middle'
     ctx.fillText(`0${i + 1}`, numCx, numCy)
     ctx.restore()
+  }
 
-    const labelY = numCy + 26
+  // 3. Frame overlay (branding)
+  const frame = getSquadFrame()
+  ctx.drawImage(frame, 0, 0, W, H)
+
+  // 4. Names + stacks (on top of frame)
+  for (let i = 0; i < numPeople; i++) {
+    const { cx: numCx, cy: labelY } = photoPositions[i]
+
     ctx.save()
     ctx.fillStyle = COLORS.pink
     ctx.fillRect(numCx - 40, labelY, 80, 20)
@@ -427,12 +445,6 @@ export async function composeSquadId(
     ctx.fillText((input.people[i].stack || '—').toUpperCase(), numCx, stackTagY + 22)
     ctx.restore()
   }
-
-  // 3. Frame overlay (branding)
-  const frame = getSquadFrame()
-  ctx.drawImage(frame, 0, 0, W, H)
-
-  // 4. Team tagline placeholder (bottom boxes are in frame overlay)
 
   console.time('composeSquadId-blob')
   const result = await new Promise<Blob>((resolve) => {

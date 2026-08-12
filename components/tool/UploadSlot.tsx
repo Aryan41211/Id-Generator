@@ -3,6 +3,36 @@
 import { useState, useRef } from 'react'
 import heic2any from 'heic2any'
 
+const MAX_LONG_EDGE = 1600
+
+async function resizeToMax(blob: Blob, maxEdge: number): Promise<Blob> {
+  const url = URL.createObjectURL(blob)
+  const img = new Image()
+  img.src = url
+  await new Promise((resolve) => { img.onload = resolve })
+
+  const longEdge = Math.max(img.width, img.height)
+  if (longEdge <= maxEdge) {
+    URL.revokeObjectURL(url)
+    return blob
+  }
+
+  const scale = maxEdge / longEdge
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, w, h)
+  URL.revokeObjectURL(url)
+
+  return new Promise<Blob>((resolve) => {
+    canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.92)
+  })
+}
+
 interface UploadSlotProps {
   onImageReady: (imageBlob: Blob) => void
   onRemove?: () => void
@@ -18,7 +48,6 @@ export default function UploadSlot({ onImageReady, onRemove, showRemove = false 
   const processFile = async (file: File) => {
     setError(null)
     
-    // Check file type
     const validTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/heif']
     const validExtensions = ['.jpg', '.jpeg', '.png', '.heic', '.heif']
     const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
@@ -28,7 +57,6 @@ export default function UploadSlot({ onImageReady, onRemove, showRemove = false 
       return
     }
     
-    // Check file size (15MB limit)
     if (file.size > 15 * 1024 * 1024) {
       setError('File size must be under 15MB')
       return
@@ -39,10 +67,8 @@ export default function UploadSlot({ onImageReady, onRemove, showRemove = false 
     try {
       let imageBlob: Blob
       
-      // Check if it's a HEIC file
       if (file.type === 'image/heic' || file.type === 'image/heif' || 
           fileExtension === '.heic' || fileExtension === '.heif') {
-        // Convert HEIC to JPEG
         const jpegBlob = await heic2any({
           blob: file,
           toType: 'image/jpeg',
@@ -53,11 +79,11 @@ export default function UploadSlot({ onImageReady, onRemove, showRemove = false 
         imageBlob = file
       }
       
-      // Create preview URL
+      imageBlob = await resizeToMax(imageBlob, MAX_LONG_EDGE)
+      
       const previewUrl = URL.createObjectURL(imageBlob)
       setPreview(previewUrl)
       
-      // Call callback with the processed image
       onImageReady(imageBlob)
     } catch (err) {
       console.error('Error processing image:', err)

@@ -6,10 +6,9 @@ import { buildShareCaption } from '@/lib/shareCaption'
 interface ShareToXButtonProps {
   imageBlob: Blob | null
   mode: 'solo' | 'squad'
-  builderClass?: { title: string; tier: string }
 }
 
-export default function ShareToXButton({ imageBlob, mode, builderClass }: ShareToXButtonProps) {
+export default function ShareToXButton({ imageBlob, mode }: ShareToXButtonProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,21 +19,17 @@ export default function ShareToXButton({ imageBlob, mode, builderClass }: ShareT
     setError(null)
     
     try {
-      // Check if Web Share API with files is supported
       if (navigator.canShare && navigator.canShare({ files: [] })) {
-        // Create a File from the Blob
         const fileName = mode === 'solo' ? 'hh-goa-2026-id.png' : 'hh-goa-2026-squad-id.png'
         const file = new File([imageBlob], fileName, { type: 'image/png' })
         
-        const caption = buildShareCaption({ mode, builderClass })
+        const caption = buildShareCaption({ mode })
         
-        // Try to share with the file
         await navigator.share({
           files: [file],
           text: caption
         })
       } else {
-        // Desktop fallback: POST to server and get OG link
         const formData = new FormData()
         const fileName = mode === 'solo' ? 'hh-goa-2026-id.png' : 'hh-goa-2026-squad-id.png'
         formData.append('image', imageBlob, fileName)
@@ -48,14 +43,11 @@ export default function ShareToXButton({ imageBlob, mode, builderClass }: ShareT
           throw new Error('Failed to upload image')
         }
         
-        const { id, url } = await response.json()
+        const { id } = await response.json()
         
-        // Build the share URL
         const shareUrl = `${window.location.origin}/s/${id}`
-        // Get caption with actual origin
-        const caption = buildShareCaption({ mode, builderClass }).replace('https://hh-goa-id.vercel.app', window.location.origin)
+        const caption = buildShareCaption({ mode }).replace('https://hh-goa-id.vercel.app', window.location.origin)
         
-        // Open Twitter intent in a new tab
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(caption)}&url=${encodeURIComponent(shareUrl)}`
         window.open(twitterUrl, '_blank')
       }

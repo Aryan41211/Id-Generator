@@ -3,7 +3,7 @@ export default function FeatureTagCard() {
     "Instantly recognizable HH Goa 2026 identity",
     "1-click download + 1-click Share to X",
     "Works on any photo — no manual cropping",
-    "Personalized: name, stack, a generated builder class",
+    "Personalized: name, stack",
     "Bring your whole crew into one combined frame",
     "Seconds from upload to shareable output"
   ]

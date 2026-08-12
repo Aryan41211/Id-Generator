@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { usePreload } from '@/hooks/usePreload'
 import TickerBar from '@/components/landing/TickerBar'
 import Hero from '@/components/landing/Hero'
 import HowItWorksStrip from '@/components/landing/HowItWorksStrip'
@@ -10,7 +11,6 @@ import ModeToggle from '@/components/tool/ModeToggle'
 import UploadSlot from '@/components/tool/UploadSlot'
 import PersonalizeForm from '@/components/tool/PersonalizeForm'
 import IdCanvas from '@/components/tool/IdCanvas'
-import BuilderClassReveal from '@/components/tool/BuilderClassReveal'
 import DownloadButton from '@/components/tool/DownloadButton'
 import ShareToXButton from '@/components/tool/ShareToXButton'
 
@@ -18,59 +18,66 @@ interface PersonData {
   image: Blob | null
   name: string
   stack: string
-  builderClass: { title: string; tier: string } | null
 }
 
 export default function ToolSection() {
+  usePreload()
+
   const [mode, setMode] = useState<'solo' | 'squad'>('solo')
   const [people, setPeople] = useState<PersonData[]>([
-    { image: null, name: '', stack: '', builderClass: null }
+    { image: null, name: '', stack: '' }
   ])
   const [generatedImage, setGeneratedImage] = useState<Blob | null>(null)
 
   const handleModeChange = (newMode: 'solo' | 'squad') => {
     setMode(newMode)
-    if (newMode === 'solo') {
-      setPeople(people.slice(0, 1))
-    } else {
-      if (people.length === 0) {
-        setPeople([{ image: null, name: '', stack: '', builderClass: null }])
+    setPeople(prev => {
+      if (newMode === 'solo') {
+        return prev.slice(0, 1)
       }
-    }
+      if (prev.length === 0) {
+        return [{ image: null, name: '', stack: '' }]
+      }
+      return prev
+    })
     setGeneratedImage(null)
   }
 
   const handleImageReady = (imageBlob: Blob, index: number) => {
-    const newPeople = [...people]
-    newPeople[index] = { ...newPeople[index], image: imageBlob }
-    setPeople(newPeople)
+    setPeople(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], image: imageBlob }
+      return next
+    })
     setGeneratedImage(null)
   }
 
   const handleRemoveImage = (index: number) => {
-    const newPeople = people.filter((_, i) => i !== index)
-    setPeople(newPeople)
+    setPeople(prev => prev.filter((_, i) => i !== index))
     setGeneratedImage(null)
   }
 
-  const addTeammate = () => {
-    if (people.length < 4) {
-      setPeople([...people, { image: null, name: '', stack: '', builderClass: null }])
-    }
-  }
+  const addTeammate = useCallback(() => {
+    setPeople(prev => {
+      if (prev.length < 4) {
+        return [...prev, { image: null, name: '', stack: '' }]
+      }
+      return prev
+    })
+  }, [])
 
-  const handlePersonalize = useCallback((index: number, data: { name: string; stack: string; builderClass: { title: string; tier: string } }) => {
-    const newPeople = [...people]
-    newPeople[index] = { ...newPeople[index], ...data }
-    setPeople(newPeople)
+  const handlePersonalize = useCallback((index: number, data: { name: string; stack: string }) => {
+    setPeople(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], ...data }
+      return next
+    })
     setGeneratedImage(null)
-  }, [people])
+  }, [])
 
   const handleImageGenerated = useCallback((blob: Blob) => {
     setGeneratedImage(blob)
   }, [])
-
-  const firstPersonBuilderClass = people[0]?.builderClass
 
   return (
     <>
@@ -137,8 +144,6 @@ export default function ToolSection() {
               </div>
             )}
             
-            <BuilderClassReveal builderClass={firstPersonBuilderClass} />
-            
             <IdCanvas 
               mode={mode}
               people={people}
@@ -151,7 +156,6 @@ export default function ToolSection() {
                 <ShareToXButton 
                   imageBlob={generatedImage} 
                   mode={mode} 
-                  builderClass={firstPersonBuilderClass || undefined}
                 />
               </div>
             )}

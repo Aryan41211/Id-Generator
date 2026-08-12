@@ -32,7 +32,7 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="font-body text-hh-cream/60 text-xl md:text-2xl max-w-2xl mx-auto mb-12"
         >
-          One photo. Your crew if you've got one. A generated builder class.
+          One photo. Your crew if you've got one.
           Out in seconds.
         </motion.p>
         

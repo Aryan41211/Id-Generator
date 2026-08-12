@@ -1,45 +1,35 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { generateBuilderClass } from '@/lib/builderClass'
+import { useState, useEffect, useRef } from 'react'
 
 interface PersonalizeFormProps {
-  onPersonalize: (data: { name: string; stack: string; builderClass: { title: string; tier: string } }) => void
+  onPersonalize: (data: { name: string; stack: string }) => void
   label?: string
 }
 
 export default function PersonalizeForm({ onPersonalize, label }: PersonalizeFormProps) {
   const [name, setName] = useState('')
   const [stack, setStack] = useState('')
-  const [builderClass, setBuilderClass] = useState<{ title: string; tier: string } | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onPersonalizeRef = useRef(onPersonalize)
+  onPersonalizeRef.current = onPersonalize
 
   useEffect(() => {
-    if (name.trim()) {
-      const seed = `${name.trim()}-${stack.trim()}`
-      const generated = generateBuilderClass(seed)
-      setBuilderClass(generated)
-      onPersonalize({
-        name: name.trim(),
-        stack: stack.trim(),
-        builderClass: generated
-      })
-    } else {
-      setBuilderClass(null)
-    }
-  }, [name, stack, onPersonalize])
+    if (debounceRef.current) clearTimeout(debounceRef.current)
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Common':
-      case 'Rare':
-        return 'bg-hh-yellow text-hh-ink'
-      case 'Elite':
-      case 'Legendary':
-        return 'bg-hh-pink text-hh-cream'
-      default:
-        return 'bg-hh-yellow text-hh-ink'
+    debounceRef.current = setTimeout(() => {
+      if (name.trim()) {
+        onPersonalizeRef.current({
+          name: name.trim(),
+          stack: stack.trim(),
+        })
+      }
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }
+  }, [name, stack])
 
   return (
     <div className="bg-hh-cream border border-hh-cream-line rounded-lg p-6 shadow-md">
@@ -77,17 +67,6 @@ export default function PersonalizeForm({ onPersonalize, label }: PersonalizeFor
             className="w-full px-4 py-3 border border-hh-cream-line rounded-lg font-body text-hh-ink focus:outline-none focus:border-hh-pink transition-colors"
           />
         </div>
-        
-        {builderClass && (
-          <div className="mt-6">
-            <div className="text-sm font-mono-label text-hh-ink mb-2 uppercase tracking-wider">
-              Your Builder Class
-            </div>
-            <div className={`inline-block px-4 py-2 rounded-full font-mono-label text-sm uppercase tracking-wider ${getTierColor(builderClass.tier)}`}>
-              {builderClass.tier} · {builderClass.title}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

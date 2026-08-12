@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface PersonData {
   image: Blob | null
   name: string
   stack: string
-  builderClass: { title: string; tier: string } | null
 }
 
 interface IdCanvasProps {
@@ -15,65 +14,44 @@ interface IdCanvasProps {
   onImageReady: (blob: Blob) => void
 }
 
-type Phase = 'idle' | 'developing' | 'ready'
-
 export default function IdCanvas({ mode, people, onImageReady }: IdCanvasProps) {
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [rawPreviewUrl, setRawPreviewUrl] = useState<string | null>(null)
-  const [finalPreviewUrl, setFinalPreviewUrl] = useState<string | null>(null)
-  const [showHint, setShowHint] = useState(false)
-  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const minTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startTimeRef = useRef<number>(0)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isComposing, setIsComposing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const genRef = useRef(0)
+  const urlRef = useRef<string | null>(null)
+
+  const validPeople = people.filter(p => p.image && p.name)
+  const hasEnough = mode === 'solo' ? validPeople.length >= 1 : validPeople.length >= 2
 
   useEffect(() => {
-    const generate = async () => {
-      if (typeof window === 'undefined') return
+    if (!hasEnough) {
+      setPreviewUrl(null)
+      setIsComposing(false)
+      setError(null)
+      return
+    }
 
-      const validPeople = people.filter(p => p.image && p.name && p.builderClass)
+    const gen = ++genRef.current
+    setIsComposing(true)
+    setError(null)
 
-      if (mode === 'solo' && validPeople.length < 1) {
-        setPhase('idle')
-        setRawPreviewUrl(null)
-        setFinalPreviewUrl(null)
-        return
-      }
-      if (mode === 'squad' && validPeople.length < 2) {
-        setPhase('idle')
-        setRawPreviewUrl(null)
-        setFinalPreviewUrl(null)
-        return
-      }
-      if (validPeople.length === 0) {
-        setPhase('idle')
-        setRawPreviewUrl(null)
-        setFinalPreviewUrl(null)
-        return
-      }
-
-      // Create instant raw preview from first person's image blob
-      const firstBlob = validPeople[0].image!
-      const rawUrl = URL.createObjectURL(firstBlob)
-      setRawPreviewUrl(rawUrl)
-      setFinalPreviewUrl(null)
-      setPhase('developing')
-      setShowHint(false)
-      startTimeRef.current = Date.now()
-
-      // Show hint after 1.5s
-      hintTimerRef.current = setTimeout(() => setShowHint(true), 1500)
+    const timer = setTimeout(async () => {
+      if (gen !== genRef.current) return
 
       try {
+        console.log('[compose] START', { mode, people: validPeople.map(p => p.name) })
         const { composeSoloId, composeSquadId } = await import('@/lib/canvasCompose')
+
+        if (gen !== genRef.current) return
 
         let blob: Blob
         if (mode === 'solo') {
-          const person = validPeople[0]
+          const p = validPeople[0]
           blob = await composeSoloId({
-            photo: person.image!,
-            name: person.name,
-            stack: person.stack,
-            builderClass: person.builderClass!
+            photo: p.image!,
+            name: p.name,
+            stack: p.stack,
           })
         } else {
           blob = await composeSquadId({
@@ -81,130 +59,76 @@ export default function IdCanvas({ mode, people, onImageReady }: IdCanvasProps) 
               photo: p.image!,
               name: p.name,
               stack: p.stack,
-              builderClass: p.builderClass!
             }))
           })
         }
 
-        // Ensure developing phase shows for at least 500ms
-        const elapsed = Date.now() - startTimeRef.current
-        const remaining = Math.max(0, 500 - elapsed)
-        await new Promise(r => setTimeout(r, remaining))
+        if (gen !== genRef.current) return
 
-        const finalUrl = URL.createObjectURL(blob)
-        setFinalPreviewUrl(finalUrl)
-        setPhase('ready')
+        console.log('[compose] DONE, blob size:', blob.size)
+        if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+        const url = URL.createObjectURL(blob)
+        urlRef.current = url
+        setPreviewUrl(url)
+        setIsComposing(false)
         onImageReady(blob)
-      } catch (error) {
-        console.error('Error generating image:', error)
-        setPhase('idle')
-      } finally {
-        if (hintTimerRef.current) clearTimeout(hintTimerRef.current)
-        setShowHint(false)
+      } catch (err) {
+        console.error('[compose] ERROR:', err)
+        if (gen === genRef.current) {
+          setError(`Error: ${err instanceof Error ? err.message : String(err)}`)
+          setIsComposing(false)
+        }
       }
-    }
+    }, 100)
 
-    generate()
+    return () => clearTimeout(timer)
+  }, [mode, hasEnough, validPeople.length,
+    ...validPeople.map(p => `${p.image?.size || 0}-${p.name}-${p.stack}`)
+  ])
 
-    return () => {
-      if (hintTimerRef.current) clearTimeout(hintTimerRef.current)
-      if (minTimerRef.current) clearTimeout(minTimerRef.current)
-    }
-  }, [mode, people, onImageReady])
-
-  // Cleanup URLs on unmount
   useEffect(() => {
-    return () => {
-      if (rawPreviewUrl) URL.revokeObjectURL(rawPreviewUrl)
-      if (finalPreviewUrl) URL.revokeObjectURL(finalPreviewUrl)
-    }
+    return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current) }
   }, [])
 
-  if (phase === 'idle') return null
+  if (error) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="bg-red-50 border border-red-300 rounded-lg p-4 text-center max-w-md">
+          <p className="text-red-700 font-mono-label text-sm mb-2">{error}</p>
+          <button onClick={() => { setError(null); genRef.current++ }} className="text-hh-pink underline text-sm">
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasEnough) return null
 
   return (
     <div className="flex justify-center py-8">
       <div className="relative overflow-hidden rounded-lg" style={{ maxWidth: '420px', width: '100%' }}>
-        {/* Raw photo — developing phase */}
-        {rawPreviewUrl && phase === 'developing' && (
-          <div className="relative">
-            <div
-              className="w-full rounded-lg overflow-hidden developing-photo"
-              style={{ aspectRatio: '4 / 5' }}
-            >
-              <img
-                src={rawPreviewUrl}
-                alt="Your photo"
-                className="w-full h-full object-cover"
-              />
-              {/* Developing overlay */}
-              <div className="developing-overlay" />
+        {isComposing && (
+          <div className="flex items-center justify-center bg-hh-cream rounded-lg" style={{ aspectRatio: '4 / 5' }}>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-hh-pink mx-auto mb-3" />
+              <p className="font-mono-label text-hh-ink text-xs uppercase tracking-widest">
+                Generating your ID...
+              </p>
             </div>
-            {showHint && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent py-4 px-4">
-                <p className="font-mono-label text-hh-cream text-xs uppercase tracking-widest text-center animate-pulse">
-                  Developing your ID...
-                </p>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Final composited card — cross-fade in */}
-        {finalPreviewUrl && (
-          <div className={`rounded-lg overflow-hidden ${phase === 'ready' ? 'crossfade-in' : ''}`}>
-            <img
-              src={finalPreviewUrl}
-              alt="Generated HH Goa 2026 ID"
-              className="w-full h-auto rounded-lg"
-            />
-          </div>
+        {previewUrl && (
+          <img
+            key={previewUrl}
+            src={previewUrl}
+            alt="Generated HH Goa 2026 ID"
+            className="w-full h-auto rounded-lg"
+            onLoad={() => console.log('[compose] image rendered')}
+          />
         )}
       </div>
-
-      <style jsx>{`
-        .developing-photo {
-          filter: saturate(0.4) contrast(0.85) brightness(1.05);
-          opacity: 0.6;
-          animation: develop-reveal 0.6s ease-out forwards;
-        }
-
-        .developing-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(11, 61, 36, 0.2) 0%,
-            rgba(246, 239, 216, 0.15) 100%
-          );
-          mix-blend-mode: overlay;
-          pointer-events: none;
-        }
-
-        @keyframes develop-reveal {
-          0% {
-            filter: saturate(0.4) contrast(0.85) brightness(1.05);
-            opacity: 0.6;
-          }
-          100% {
-            filter: saturate(1) contrast(1) brightness(1);
-            opacity: 1;
-          }
-        }
-
-        .crossfade-in {
-          animation: crossfade-in 0.25s ease-in-out;
-        }
-
-        @keyframes crossfade-in {
-          0% {
-            opacity: 0;
-          }
-          100% {
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }
